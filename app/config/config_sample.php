@@ -62,15 +62,15 @@ return [
 	],
 
 	'database' => [
-		// Supported by Eloquent: mysql, pgsql, sqlite, sqlsrv.
-		'driver' => $env('DB_CONNECTION'),
+		// La API Bolsa de Trabajo usa PDO/PostgreSQL. Eloquent queda instalado por el esqueleto, pero no se usa en los módulos nuevos.
+		'driver' => $env('DB_CONNECTION', 'pgsql'),
 		'host' => $env('DB_HOST', '127.0.0.1'),
-		'port' => $env('DB_PORT', '3306'),
-		'database' => $env('DB_DATABASE'),
-		'username' => $env('DB_USERNAME'),
+		'port' => $env('DB_PORT', '5432'),
+		'database' => $env('DB_DATABASE', $env('DB_NAME')),
+		'username' => $env('DB_USERNAME', $env('DB_USER')),
 		'password' => $env('DB_PASSWORD'),
-		'charset' => 'utf8mb4',
-		'collation' => 'utf8mb4_unicode_ci',
+		'charset' => 'utf8',
+		'collation' => 'utf8_unicode_ci',
 		'prefix' => '',
 	],
 

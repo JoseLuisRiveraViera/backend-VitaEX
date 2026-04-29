@@ -1,71 +1,149 @@
-# backend-VitaEX
+# Bolsa de Trabajo UT de la Costa API
 
-Backend en PHP con FlightPHP, Eloquent ORM y Rakit Validator.
+Backend PHP 8+ con FlightPHP, Composer, PDO y PostgreSQL 16 para la plataforma Bolsa de Trabajo UT de la Costa.
 
-## Estructura
+## Estructura principal
 
 ```text
+public/
+  index.php
 app/
-  config/        Bootstrap, rutas, servicios y configuracion local
-  controllers/   Mensajes HTTP, status codes y entrada/salida de endpoints
-  exceptions/    Excepciones controladas para respuestas JSON
-  middlewares/   Headers y reglas transversales de seguridad
-  models/        Modelos Eloquent
-  services/      Logica de negocio
-  support/       Helpers de respuesta y errores API
-  validators/    Reglas Rakit por recurso
-  views/         Vistas simples de Flight
-public/          Web root
+  config/      env, cors y conexion PDO PostgreSQL
+  core/        Response, Request, Validator y AuthMiddleware
+  controllers/ Controladores REST
+  models/      Consultas PDO preparadas
+  routes/      Rutas API FlightPHP
+  services/    SIEst, JWT y consultas de matching
 ```
 
-## Instalacion
+## Ejecutar localmente
 
 ```bash
 composer install
-copy app\config\config_sample.php app\config\config.php
-composer start
+cp .env.example .env
 ```
 
-La API corre por defecto en `http://localhost:8000`.
-
-## Configuracion
-
-`app/config/config.php` esta ignorado por git. Puedes configurar variables de entorno:
+Configura tus credenciales PostgreSQL en `.env`:
 
 ```env
-APP_ENV=local
-APP_DEBUG=true
-APP_TRACY=false
-APP_TIMEZONE=America/Mexico_City
-DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=vitaex
-DB_USERNAME=root
-DB_PASSWORD=
+DB_PORT=5432
+DB_NAME=bolsa_trabajo_ut
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_SCHEMA=bolsa_trabajo
 ```
 
-Si no hay base configurada, el backend arranca y responde `/api/health`, pero los endpoints que usan Eloquent devuelven `503` con mensaje controlado.
+Inicia el servidor:
 
-Para una prueba rapida con SQLite:
-
-```powershell
-php runway init:sample-db
-$env:DB_CONNECTION='sqlite'
-$env:DB_DATABASE='app/database.sqlite'
-composer start
+```bash
+php -S localhost:8000 -t public
 ```
 
-## Endpoints base
+Health check:
 
-```text
-GET    /api/health
-GET    /api/users
-GET    /api/users/{id}
-POST   /api/users
-PUT    /api/users/{id}
-PATCH  /api/users/{id}
-DELETE /api/users/{id}
+```http
+GET http://localhost:8000/api/health
 ```
 
-Los controladores formatean la respuesta. La logica de negocio vive en services y la validacion vive en validators.
+## Autenticación
+
+El login real con SIEst está aislado en `app/services/SiestAuthService.php`. Por defecto usa simulación:
+
+```env
+SIEST_AUTH_MOCK=true
+```
+
+Para conectar al SIEst real:
+
+```env
+SIEST_AUTH_MOCK=false
+SIEST_LOGIN_URL=https://www.utdelacosta.edu.mx/SIEstBackend/api/v1/login
+```
+
+No se guardan contraseñas en esta base de datos.
+
+## Respuesta estándar
+
+Éxito:
+
+```json
+{
+  "success": true,
+  "message": "Mensaje",
+  "data": {}
+}
+```
+
+Error:
+
+```json
+{
+  "success": false,
+  "message": "Mensaje de error",
+  "errors": {}
+}
+```
+
+## Ejemplos Postman
+
+Crear empresa:
+
+```json
+{
+  "nombre": "Tecnologías Costa",
+  "rfc": "TCO240101AB1",
+  "correo": "contacto@tecnologiascosta.mx",
+  "telefono": "3231000000",
+  "direccion": "Santiago Ixcuintla, Nayarit"
+}
+```
+
+Crear vacante con perfil idóneo:
+
+```json
+{
+  "cve_empresa": 1,
+  "titulo": "Desarrollador Backend PHP",
+  "descripcion": "Desarrollo de APIs REST con PHP y PostgreSQL.",
+  "activo": true,
+  "perfil_idoneo": {
+    "puntaje_psicometrica": 80,
+    "puntaje_cognitiva": 85,
+    "puntaje_tecnica": 90,
+    "puntaje_proyectiva": 75
+  }
+}
+```
+
+Actualizar perfil de egresado:
+
+```json
+{
+  "telefono": "3231000001",
+  "correo": "egresado@utdelacosta.edu.mx",
+  "habilidades": "PHP, PostgreSQL, Angular",
+  "experiencia": "Prácticas profesionales en desarrollo web"
+}
+```
+
+Postular egresado a vacante:
+
+```json
+{
+  "cve_egresado": 1,
+  "cve_vacante": 1
+}
+```
+
+Crear solicitud de convenio:
+
+```json
+{
+  "cve_empresa": 1,
+  "motivo": "Convenio para estadías e inserción laboral",
+  "estatus": "pendiente"
+}
+```
+
+Los payloads de empresa, vacante, perfil y solicitud se filtran contra columnas reales de PostgreSQL para no inventar campos; ajusta los nombres a los definidos en tu schema `bolsa_trabajo`.

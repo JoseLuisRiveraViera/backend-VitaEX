@@ -1,6 +1,6 @@
 {
     "name": "vitaex/backend",
-    "description": "VitaEX API backend built with FlightPHP, Eloquent and Rakit Validator",
+    "description": "Bolsa de Trabajo UT de la Costa API backend built with FlightPHP, Composer, PDO and PostgreSQL",
     "keywords": [
         "microframework",
         "rest",
@@ -23,6 +23,8 @@
     "require": {
         "php": "^8.1",
         "ext-json": "*",
+        "ext-pdo": "*",
+        "ext-pdo_pgsql": "*",
         "flightphp/core": "^3.0",
         "flightphp/runway": "^0.2 || ^1.1",
         "illuminate/database": "^10.0",

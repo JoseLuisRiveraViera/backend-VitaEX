@@ -7,9 +7,12 @@
  */
 $ds = DIRECTORY_SEPARATOR;
 require(__DIR__ . $ds . '..' . $ds . '..' . $ds . 'vendor' . $ds . 'autoload.php');
-if(file_exists(__DIR__. $ds . 'config.php') === false) {
-	Flight::halt(500, 'Config file not found. Please create a config.php file in the app/config directory to get started.');
-}
+require_once(__DIR__ . $ds . 'env.php');
+require_once(__DIR__ . $ds . 'cors.php');
+require_once(__DIR__ . $ds . 'database.php');
+
+\app\config\Env::load(__DIR__ . $ds . '..' . $ds . '..' . $ds . '.env');
+\app\config\Cors::apply();
 
 // It is better practice to not use static methods for everything. It makes your
 // app much more difficult to unit test easily.
@@ -21,7 +24,8 @@ $app = Flight::app();
  * P.S. When you require a php file and that file returns an array, the array
  * will be returned by the require statement where you can assign it to a var.
  */
-$config = require('config.php');
+$configFile = file_exists(__DIR__. $ds . 'config.php') ? 'config.php' : 'config_sample.php';
+$config = require($configFile);
 
 /*
  * Load the services file.
