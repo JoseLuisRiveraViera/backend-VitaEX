@@ -15,7 +15,7 @@ class SampleDatabaseCommand extends AbstractBaseCommand
      */
     public function __construct(array $config)
     {
-        parent::__construct('init:sample-db', 'Creates a sample SQLite database and tables.', $config);
+        parent::__construct('init:sample-db', 'Creates a sample SQLite database and users table.', $config);
     }
 
     /**
@@ -29,9 +29,17 @@ class SampleDatabaseCommand extends AbstractBaseCommand
 
         $PdoWrapper = new PdoWrapper('sqlite:'. __DIR__ . '/../database.sqlite');
 
-        $io->info('Creating tables...');
-        $PdoWrapper->exec('CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, title TEXT, content TEXT, username TEXT, created_at TEXT, updated_at TEXT)');
-        $PdoWrapper->exec('CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, username TEXT, content TEXT, created_at TEXT, updated_at TEXT)');
+        $io->info('Creating users table...');
+        $PdoWrapper->exec(
+            'CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )'
+        );
         $io->ok('Tables created!', true);
     }
 }

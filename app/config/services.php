@@ -1,102 +1,129 @@
 <?php
+declare(strict_types=1);
 
-use flight\Engine;
-use flight\database\PdoWrapper;
-use flight\debug\database\PdoQueryCapture;
+use app\services\UserService;
+use app\support\ApiErrorHandler;
+use app\validators\UserValidator;
 use flight\debug\tracy\TracyExtensionLoader;
+use flight\Engine;
+use Illuminate\Database\Capsule\Manager as Capsule;
+use Rakit\Validation\Validator;
 use Tracy\Debugger;
 
-/*********************************************
- *         FlightPHP Service Setup           *
- *********************************************
- * This file registers services and integrations
- * for your FlightPHP application. Edit as needed.
- *
- * @var array  $config  From config.php
- * @var Engine $app     FlightPHP app instance
- **********************************************/
+/**
+ * @var array<string, mixed> $config
+ * @var Engine $app
+ * @var string $ds
+ */
 
+if (function_exists('vitaex_normalize_database_config') === false) {
+	/**
+	 * @param array<string, mixed> $database
+	 * @return array<string, mixed>
+	 */
+	function vitaex_normalize_database_config(array $database): array
+	{
+		if (isset($database['dbname']) && empty($database['database'])) {
+			$database['database'] = $database['dbname'];
+		}
 
+		if (isset($database['user']) && empty($database['username'])) {
+			$database['username'] = $database['user'];
+		}
 
-/*********************************************
- *           Session Service Setup           *
- *********************************************
- * To enable sessions in FlightPHP, register the session service.
- * Docs: https://docs.flightphp.com/awesome-plugins/session
- *
- * Example:
- *   $app->register('session', \flight\Session::class, [
- *       [
- *           'prefix' 		=> 'flight_session_', 	  // Prefix for the session cookie
- *           'save_path'    => 'path/to/my/sessions', // Path to save session files
- *           // ...other options...
- *       ]
- *   ]);
- *
- * For advanced options, see the plugin documentation above.
- **********************************************/
+		if (isset($database['file_path']) && empty($database['database'])) {
+			$database['driver'] = 'sqlite';
+			$database['database'] = $database['file_path'];
+		}
 
-/*********************************************
- *           Tracy Debugger Setup            *
- *********************************************
- * Tracy is a powerful error handler and debugger for PHP.
- * Docs: https://tracy.nette.org/
- *
- * Key Tracy configuration options:
- *   - Debugger::enable([mode], [ip]);
- *       - mode: Debugger::Development or Debugger::Production
- *       - ip: restrict debug bar to specific IP(s)
- *   - Debugger::$logDirectory: where error logs are stored
- *   - Debugger::$strictMode: show all errors (true/E_ALL), or filter out deprecated notices
- *   - Debugger::$showBar: show/hide debug bar (auto-detected, can be forced)
- *   - Debugger::$maxLen: max length of dumped variables
- *   - Debugger::$maxDepth: max depth of dumped structures
- *   - Debugger::$editor: configure clickable file links (see docs)
- *   - Debugger::$email: send error notifications to email
- *
- * Example Tracy setups:
- *   Debugger::enable(); // Auto-detects environment
- *   Debugger::enable(Debugger::Development); // Explicitly set environment
- *   Debugger::enable('23.75.345.200'); // Restrict debug bar to specific IPs
- *
- * For more options, see https://tracy.nette.org/en/configuration
- **********************************************/
-Debugger::enable(); // Auto-detects environment
-// Debugger::enable(Debugger::Development); // Explicitly set environment
-// Debugger::enable('23.75.345.200'); // Restrict debug bar to specific IPs
-Debugger::$logDirectory = __DIR__ . $ds . '..' . $ds . 'log'; // Log directory
-Debugger::$strictMode = true; // Show all errors (set to E_ALL & ~E_DEPRECATED for less noise)
-// Debugger::$maxLen = 1000; // Max length of dumped variables (default: 150)
-// Debugger::$maxDepth = 5; // Max depth of dumped structures (default: 3)
-// Debugger::$editor = 'vscode'; // Enable clickable file links in debug bar
-// Debugger::$email = 'your@email.com'; // Send error notifications
-if (Debugger::$showBar === true && php_sapi_name() !== 'cli') {
-	(new TracyExtensionLoader($app)); // Load FlightPHP Tracy extensions
+		$driver = $database['driver'] ?? null;
+		if ($driver === null || $driver === '') {
+			return [];
+		}
+
+		if ($driver === 'sqlite') {
+			return [
+				'driver' => 'sqlite',
+				'database' => $database['database'] ?? '',
+				'prefix' => $database['prefix'] ?? '',
+				'foreign_key_constraints' => true,
+			];
+		}
+
+		return array_filter([
+			'driver' => $driver,
+			'host' => $database['host'] ?? '127.0.0.1',
+			'port' => $database['port'] ?? null,
+			'database' => $database['database'] ?? null,
+			'username' => $database['username'] ?? null,
+			'password' => $database['password'] ?? null,
+			'charset' => $database['charset'] ?? 'utf8mb4',
+			'collation' => $database['collation'] ?? 'utf8mb4_unicode_ci',
+			'prefix' => $database['prefix'] ?? '',
+			'strict' => true,
+		], static fn($value): bool => $value !== null);
+	}
 }
 
-/**********************************************
- *           Database Service Setup           *
- **********************************************/
-// Uncomment and configure the following for your database:
+if (function_exists('vitaex_database_is_configured') === false) {
+	/**
+	 * @param array<string, mixed> $database
+	 */
+	function vitaex_database_is_configured(array $database): bool
+	{
+		if (empty($database['driver']) || empty($database['database'])) {
+			return false;
+		}
 
-// MySQL Example:
-// $dsn = 'mysql:host=' . $config['database']['host'] . ';dbname=' . $config['database']['dbname'] . ';charset=utf8mb4';
+		if ($database['driver'] === 'sqlite') {
+			return is_string($database['database']) && $database['database'] !== '';
+		}
 
-// SQLite Example:
-// $dsn = 'sqlite:' . $config['database']['file_path'];
+		return empty($database['host']) === false && array_key_exists('username', $database);
+	}
+}
 
-// Register Flight::db() service
-// In development, use PdoQueryCapture to log queries; in production, use PdoWrapper for performance.
-// $pdoClass = Debugger::$showBar === true ? PdoQueryCapture::class : PdoWrapper::class;
-// $app->register('db', $pdoClass, [ $dsn, $config['database']['user'] ?? null, $config['database']['password'] ?? null ]);
+$appConfig = $config['app'] ?? [];
+$environment = (string) ($appConfig['env'] ?? getenv('APP_ENV') ?: 'local');
+$debug = (bool) ($appConfig['debug'] ?? in_array($environment, ['local', 'development', 'testing'], true));
+$tracyEnabled = (bool) ($appConfig['tracy'] ?? false);
 
-/**********************************************
- *         Third-Party Integrations           *
- **********************************************/
-// Google OAuth Example:
-// $app->register('google_oauth', Google_Client::class, [ $config['google_oauth'] ]);
+$app->set('app.name', $appConfig['name'] ?? 'backend-VitaEX');
+$app->set('app.env', $environment);
+$app->set('flight.debug', $debug);
 
-// Redis Example:
-// $app->register('redis', Redis::class, [ $config['redis']['host'], $config['redis']['port'] ]);
+Debugger::$logDirectory = __DIR__ . $ds . '..' . $ds . 'log';
+Debugger::$strictMode = true;
+Debugger::$showBar = false;
 
-// Add more service registrations below as needed
+if ($tracyEnabled === true) {
+	Debugger::enable($debug ? Debugger::Development : Debugger::Production);
+	Debugger::$showBar = $debug && php_sapi_name() !== 'cli';
+
+	if (Debugger::$showBar === true) {
+		(new TracyExtensionLoader($app));
+	}
+}
+
+$app->set('database.enabled', false);
+$app->set('database.connection', null);
+
+$databaseConfig = vitaex_normalize_database_config($config['database'] ?? []);
+if (vitaex_database_is_configured($databaseConfig) === true) {
+	$capsule = new Capsule();
+	$capsule->addConnection($databaseConfig);
+	$capsule->setAsGlobal();
+	$capsule->bootEloquent();
+
+	$app->set('database.enabled', true);
+	$app->set('database.connection', $databaseConfig['driver']);
+}
+
+$app->register('validator', Validator::class);
+$app->register('userValidator', UserValidator::class, [$app->validator()]);
+$app->register('userService', UserService::class, [
+	$app->userValidator(),
+	$app->get('database.enabled') === true,
+]);
+
+ApiErrorHandler::register($app);

@@ -1,6 +1,6 @@
 vendor/
 .vscode/
 app/config/config.php
-composer.lock
+app/log/*
 .vagrant/
 .runway-creds.json

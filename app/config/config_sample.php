@@ -1,102 +1,85 @@
 <?php
+declare(strict_types=1);
 
 /**********************************************
- *      FlightPHP Skeleton Sample Config      *
+ *            VitaEX App Config              *
  **********************************************
  *
- * Copy this file to config.php and update values as needed.
- * All settings are required unless marked as optional.
- *
- * Example:
- *   cp app/config/config_sample.php app/config/config.php
- *
- * This file is NOT tracked by git. Store sensitive credentials here.
- **********************************************/
+ * Copy this file to app/config/config.php and keep real secrets out of git.
+ */
 
-/**********************************************
- *         Application Environment            *
- **********************************************/
-// Set your timezone (e.g., 'America/New_York', 'UTC')
-date_default_timezone_set('UTC');
+$env = static function (string $key, $default = null) {
+	$value = getenv($key);
+	return $value === false ? $default : $value;
+};
 
-// Error reporting level (E_ALL recommended for development)
+$appEnv = (string) $env('APP_ENV', 'local');
+$appDebug = filter_var(
+	$env('APP_DEBUG', in_array($appEnv, ['local', 'development', 'testing'], true) ? 'true' : 'false'),
+	FILTER_VALIDATE_BOOLEAN
+);
+
+date_default_timezone_set((string) $env('APP_TIMEZONE', 'UTC'));
 error_reporting(E_ALL);
 
-// Character encoding
 if (function_exists('mb_internal_encoding') === true) {
 	mb_internal_encoding('UTF-8');
 }
 
-// Default Locale Change as needed or feel free to remove.
 if (function_exists('setlocale') === true) {
 	setlocale(LC_ALL, 'en_US.UTF-8');
 }
 
-/**********************************************
- *           FlightPHP Core Settings          *
- **********************************************/
-
-// Get the $app var to use below
 if (empty($app) === true) {
 	$app = Flight::app();
 }
 
-// Refer to this constant to get the project root directory
-define('PROJECT_ROOT', __DIR__ . '/../..');
+if (defined('PROJECT_ROOT') === false) {
+	define('PROJECT_ROOT', dirname(__DIR__, 2));
+}
 
-// This autoloads your code in the app directory so you don't have to require_once everything
-// You'll need to namespace your classes with "app\folder\" to include them properly
 $app->path(PROJECT_ROOT);
 
-// Core config variables
-$app->set('flight.base_url', '/',);           // Base URL for your app. Change if app is in a subdirectory (e.g., '/myapp/')
-$app->set('flight.case_sensitive', false);    // Set true for case sensitive routes. Default: false
-$app->set('flight.log_errors', true);         // Log errors to file. Recommended: true in production
-$app->set('flight.handle_errors', false);     // Let Tracy handle errors if false. Set true to use Flight's error handler
-$app->set('flight.views.path', PROJECT_ROOT . '/app/views'); // Path to views/templates
-$app->set('flight.views.extension', '.php');  // View file extension (e.g., '.php', '.latte')
-$app->set('flight.content_length', false);    // Send content length header. Usually false unless required by proxy
+$app->set('flight.base_url', '/');
+$app->set('flight.case_sensitive', false);
+$app->set('flight.log_errors', true);
+$app->set('flight.handle_errors', true);
+$app->set('flight.debug', $appDebug);
+$app->set('flight.views.path', PROJECT_ROOT . '/app/views');
+$app->set('flight.views.extension', '.php');
+$app->set('flight.content_length', false);
+$app->set('flight.allow_method_override', false);
 
-// Generate a CSP nonce for each request and store in $app
-$nonce = bin2hex(random_bytes(16));
-$app->set('csp_nonce', $nonce);
+$app->set('csp_nonce', bin2hex(random_bytes(16)));
 
-/**********************************************
- *           User Configuration               *
- **********************************************/
-
-// When you `return` an array here, and then include this file elsewhere,
-// you'll get this array back for your configuration settings.
-// $config = include PROJECT_ROOT .'/app/config/config.php';
 return [
-	/**************************************
-	 *         Database Settings          *
-	 **************************************/
-	'database' => [
-		// MySQL Example:
-		// 'host'     => 'localhost',      // Database host (e.g., 'localhost', 'db.example.com')
-		// 'dbname'   => 'your_db_name',   // Database name (e.g., 'flightphp')
-		// 'user'     => 'your_username',  // Database user (e.g., 'root')
-		// 'password' => 'your_password',  // Database password (never commit real passwords)
-
-		// SQLite Example:
-		// 'file_path' => __DIR__ . $ds . '..' . $ds . 'database.sqlite', // Path to SQLite file
+	'app' => [
+		'name' => 'backend-VitaEX',
+		'env' => $appEnv,
+		'debug' => $appDebug,
+		'tracy' => filter_var($env('APP_TRACY', 'false'), FILTER_VALIDATE_BOOLEAN),
+		'url' => $env('APP_URL', 'http://localhost:8000'),
 	],
 
-	/**************************************
-	 *        Runway Settings             *
-	 **************************************/
+	'database' => [
+		// Supported by Eloquent: mysql, pgsql, sqlite, sqlsrv.
+		'driver' => $env('DB_CONNECTION'),
+		'host' => $env('DB_HOST', '127.0.0.1'),
+		'port' => $env('DB_PORT', '3306'),
+		'database' => $env('DB_DATABASE'),
+		'username' => $env('DB_USERNAME'),
+		'password' => $env('DB_PASSWORD'),
+		'charset' => 'utf8mb4',
+		'collation' => 'utf8mb4_unicode_ci',
+		'prefix' => '',
+	],
+
+	'security' => [
+		'hsts' => $appEnv === 'production',
+	],
+
 	'runway' => [
-		'index_root' => "public/index.php",
-		'app_root' => "app/"
-	]
-
-	// Google OAuth Credentials
-	// 'google_oauth' => [
-	//     'client_id'     => 'your_client_id',     // Google API client ID
-	//     'client_secret' => 'your_client_secret', // Google API client secret
-	//     'redirect_uri'  => 'your_redirect_uri',  // Redirect URI for OAuth callback
-	// ],
-
-	// Add more configuration sections below as needed
+		'index_root' => 'public/index.php',
+		'app_root' => 'app/',
+	],
 ];
