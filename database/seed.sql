@@ -19,6 +19,41 @@ INSERT INTO tipo_prueba (categoria, nombre, descripcion) VALUES
 ('proyectiva', 'Proyectiva', 'Evaluación proyectiva')
 ON CONFLICT (categoria) DO UPDATE SET nombre = EXCLUDED.nombre;
 
+INSERT INTO usuario_siest (
+    nombre_usuario,
+    contrasena_hash,
+    cve_persona_externa,
+    cve_rol,
+    activo
+)
+VALUES
+(
+    'egresado-2026',
+    '$2y$12$iEK9m5zbflvk7y.WefxHcuH3disxNtmfgNpet3zsqRsRMluYfFJEq',
+    'SIEST-PER-1001',
+    (SELECT cve_rol_externo FROM rol_externo WHERE clave_rol = 'EGRESADO' AND sistema_origen = 'SIEst'),
+    true
+),
+(
+    'empresa-2026',
+    '$2y$12$iEK9m5zbflvk7y.WefxHcuH3disxNtmfgNpet3zsqRsRMluYfFJEq',
+    'SIEST-EMP-2001',
+    (SELECT cve_rol_externo FROM rol_externo WHERE clave_rol = 'EMPRESA' AND sistema_origen = 'SIEst'),
+    true
+),
+(
+    'admin-2026',
+    '$2y$12$iEK9m5zbflvk7y.WefxHcuH3disxNtmfgNpet3zsqRsRMluYfFJEq',
+    'SIEST-ADM-9001',
+    (SELECT cve_rol_externo FROM rol_externo WHERE clave_rol = 'ADMINISTRADOR_UT' AND sistema_origen = 'SIEst'),
+    true
+)
+ON CONFLICT (nombre_usuario) DO UPDATE SET
+    contrasena_hash = EXCLUDED.contrasena_hash,
+    cve_persona_externa = EXCLUDED.cve_persona_externa,
+    cve_rol = EXCLUDED.cve_rol,
+    activo = true;
+
 INSERT INTO prueba (cve_tipo_prueba, nombre, descripcion, es_banco_general)
 SELECT cve_tipo_prueba, 'Banco general ' || categoria, 'Banco de preguntas base', true
 FROM tipo_prueba
@@ -62,14 +97,86 @@ SET cve_persona_externa = 'SIEST-PER-1001'
 FROM primer_egresado pe
 WHERE e.cve_egresado = pe.cve_egresado;
 
+INSERT INTO administrador_ut (
+    cve_persona_externa,
+    nombre,
+    primer_apellido,
+    segundo_apellido,
+    correo_institucional,
+    telefono,
+    cve_rol_externo,
+    estado
+)
+VALUES (
+    'SIEST-ADM-9001',
+    'Administrador',
+    'UTC',
+    'Vinculacion',
+    'admin@utdelacosta.edu.mx',
+    '3231000000',
+    (SELECT cve_rol_externo FROM rol_externo WHERE clave_rol = 'ADMINISTRADOR_UT' AND sistema_origen = 'SIEst'),
+    'activo'
+)
+ON CONFLICT (cve_persona_externa) DO UPDATE SET
+    nombre = EXCLUDED.nombre,
+    primer_apellido = EXCLUDED.primer_apellido,
+    segundo_apellido = EXCLUDED.segundo_apellido,
+    correo_institucional = EXCLUDED.correo_institucional,
+    telefono = EXCLUDED.telefono,
+    cve_rol_externo = EXCLUDED.cve_rol_externo,
+    estado = 'activo';
+
 INSERT INTO empresa (razon_social, nombre_comercial, rfc, sector, sitio_web, url_foto, correo_general, telefono_general, cve_ubicacion, zona)
 VALUES
+('Empresa UTC Demo S.A. de C.V.', 'Empresa UTC Demo', 'EUD260430AA1', 'Tecnologia', 'https://example.com/empresa-utc', 'https://example.com/logos/empresa-utc.png', 'empresa@utc-demo.mx', '3231000100', (SELECT cve_ubicacion FROM ubicacion WHERE municipio = 'Santiago Ixcuintla' LIMIT 1), 'norte_nayarit'),
 ('Nayarit Software 1 S.A. de C.V.', 'Nayarit Software 1', 'NSO240101AA1', 'Tecnología', 'https://example.com/ns1', 'https://example.com/logos/ns1.png', 'contacto1@example.com', '3231000101', (SELECT cve_ubicacion FROM ubicacion WHERE municipio = 'Santiago Ixcuintla' LIMIT 1), 'norte_nayarit'),
 ('Nayarit Software 2 S.A. de C.V.', 'Nayarit Software 2', 'NSO240101AA2', 'Tecnología', 'https://example.com/ns2', 'https://example.com/logos/ns2.png', 'contacto2@example.com', '3231000102', (SELECT cve_ubicacion FROM ubicacion WHERE municipio = 'Santiago Ixcuintla' LIMIT 1), 'norte_nayarit'),
 ('Nayarit Software 3 S.A. de C.V.', 'Nayarit Software 3', 'NSO240101AA3', 'Servicios', 'https://example.com/ns3', 'https://example.com/logos/ns3.png', 'contacto3@example.com', '3231000103', (SELECT cve_ubicacion FROM ubicacion WHERE municipio = 'Tepic' LIMIT 1), 'norte_nayarit'),
 ('Nacional Data 1 S.A. de C.V.', 'Nacional Data 1', 'NDA240101AA1', 'Datos', 'https://example.com/nd1', 'https://example.com/logos/nd1.png', 'contacto4@example.com', '3331000104', (SELECT cve_ubicacion FROM ubicacion WHERE municipio = 'Guadalajara' LIMIT 1), 'nacional'),
 ('Nacional Data 2 S.A. de C.V.', 'Nacional Data 2', 'NDA240101AA2', 'Datos', 'https://example.com/nd2', 'https://example.com/logos/nd2.png', 'contacto5@example.com', '3331000105', (SELECT cve_ubicacion FROM ubicacion WHERE municipio = 'Guadalajara' LIMIT 1), 'nacional')
-ON CONFLICT (razon_social) DO NOTHING;
+ON CONFLICT (razon_social) DO UPDATE SET
+    nombre_comercial = EXCLUDED.nombre_comercial,
+    rfc = EXCLUDED.rfc,
+    sector = EXCLUDED.sector,
+    sitio_web = EXCLUDED.sitio_web,
+    url_foto = EXCLUDED.url_foto,
+    correo_general = EXCLUDED.correo_general,
+    telefono_general = EXCLUDED.telefono_general,
+    cve_ubicacion = EXCLUDED.cve_ubicacion,
+    zona = EXCLUDED.zona,
+    estado = 'activo';
+
+INSERT INTO contacto_empresa (
+    cve_empresa,
+    nombre,
+    primer_apellido,
+    segundo_apellido,
+    cargo,
+    correo,
+    telefono,
+    principal,
+    estado
+)
+SELECT
+    e.cve_empresa,
+    'Contacto',
+    'Empresa',
+    'UTC',
+    'Recursos Humanos',
+    'empresa@utc-demo.mx',
+    '3231000100',
+    true,
+    'activo'
+FROM empresa e
+WHERE e.razon_social = 'Empresa UTC Demo S.A. de C.V.'
+ON CONFLICT (cve_empresa, correo) DO UPDATE SET
+    nombre = EXCLUDED.nombre,
+    primer_apellido = EXCLUDED.primer_apellido,
+    segundo_apellido = EXCLUDED.segundo_apellido,
+    cargo = EXCLUDED.cargo,
+    telefono = EXCLUDED.telefono,
+    principal = true,
+    estado = 'activo';
 
 INSERT INTO solicitud_convenio (cve_empresa, motivo, origen, estado, observacion)
 SELECT cve_empresa, 'Solicitud de convenio de prueba', 'seed', 'pendiente', 'Registro seed'

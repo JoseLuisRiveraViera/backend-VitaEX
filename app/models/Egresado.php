@@ -43,6 +43,36 @@ class Egresado extends BaseModel
 		return $this->fetchOne('SELECT * FROM egresado WHERE cve_persona_externa = :cve_persona', ['cve_persona' => (string) $cvePersona]);
 	}
 
+	public function findByLoginIdentifier(string $identifier): ?array
+	{
+		$identifier = strtolower(trim($identifier));
+		if ($identifier === '') {
+			return null;
+		}
+
+		return $this->fetchOne(
+			'SELECT *
+			FROM egresado
+			WHERE estado = \'activo\'
+			  AND (
+				lower(trim(matricula)) = :identifier
+				OR lower(trim(coalesce(correo_institucional, \'\'))) = :identifier
+				OR lower(trim(coalesce(correo_personal, \'\'))) = :identifier
+				OR lower(trim(cve_persona_externa)) = :identifier
+			  )
+			ORDER BY
+				CASE
+					WHEN lower(trim(matricula)) = :identifier THEN 0
+					WHEN lower(trim(coalesce(correo_institucional, \'\'))) = :identifier THEN 1
+					WHEN lower(trim(coalesce(correo_personal, \'\'))) = :identifier THEN 2
+					ELSE 3
+				END,
+				cve_egresado
+			LIMIT 1',
+			['identifier' => $identifier]
+		);
+	}
+
 	public function perfil(string|int $cveEgresado): ?array
 	{
 		return $this->fetchOne('SELECT * FROM vw_perfil_completo_egresado WHERE cve_egresado = :cve_egresado', ['cve_egresado' => $cveEgresado]);
@@ -74,6 +104,11 @@ class Egresado extends BaseModel
 	public function evaluaciones(string|int $cveEgresado): array
 	{
 		return $this->fetchAll('SELECT * FROM evaluacion WHERE cve_egresado = :cve_egresado ORDER BY cve_evaluacion DESC', ['cve_egresado' => $cveEgresado]);
+	}
+
+	public function resetEvaluaciones(string|int $cveEgresado): int
+	{
+		return $this->execute('DELETE FROM evaluacion WHERE cve_egresado = :cve_egresado', ['cve_egresado' => $cveEgresado]);
 	}
 
 	public function certificados(string|int $cveEgresado): array

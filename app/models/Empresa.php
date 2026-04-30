@@ -53,6 +53,52 @@ class Empresa extends BaseModel
 		return null;
 	}
 
+	public function findByLoginIdentifier(string $identifier): ?array
+	{
+		$identifier = strtolower(trim($identifier));
+		if ($identifier === '') {
+			return null;
+		}
+
+		$byCorreo = $this->findByCorreo($identifier);
+		if ($byCorreo !== null) {
+			return $byCorreo;
+		}
+
+		return $this->findByPersonaExterna($identifier);
+	}
+
+	public function findByCorreo(string $correo): ?array
+	{
+		$correo = strtolower(trim($correo));
+		if ($correo === '') {
+			return null;
+		}
+
+		return $this->fetchOne(
+			$this->selectSql() . '
+			WHERE e.estado = \'activo\'
+			  AND (
+				lower(trim(coalesce(e.correo_general, \'\'))) = :correo
+				OR EXISTS (
+					SELECT 1
+					FROM contacto_empresa ce
+					WHERE ce.cve_empresa = e.cve_empresa
+					  AND ce.estado = \'activo\'
+					  AND lower(trim(ce.correo)) = :correo
+				)
+			  )
+			ORDER BY
+				CASE
+					WHEN lower(trim(coalesce(e.correo_general, \'\'))) = :correo THEN 0
+					ELSE 1
+				END,
+				e.cve_empresa
+			LIMIT 1',
+			['correo' => $correo]
+		);
+	}
+
 	public function create(array $data): array
 	{
 		return $this->insert('empresa', $this->filterTableData('empresa', $data, ['cve_empresa']), 'cve_empresa');

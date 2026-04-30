@@ -10,13 +10,14 @@ class LocalSiestService
 {
 	public function login(string $usuario, string $contrasena): ?array
 	{
-		$row = (new UsuarioSiest())->findLogin($usuario);
+		$loginIdentifier = trim($usuario);
+		$row = (new UsuarioSiest())->findLogin($loginIdentifier);
 		if ($row === null) {
 			return null;
 		}
 
 		if (password_verify($contrasena, (string) $row['contrasena_hash']) === false) {
-			throw new RuntimeException('Credenciales inválidas para SIEst simulado.');
+			throw new RuntimeException('Credenciales invalidas para SIEst.');
 		}
 
 		$roleId = $this->roleIdFromClave((string) $row['clave_rol']);
@@ -35,7 +36,9 @@ class LocalSiestService
 			],
 			'iat' => time(),
 			'exp' => time() + 3600,
-			'origen' => 'SIEst simulado local',
+			'login_identifier' => $loginIdentifier,
+			'login_resuelto_por' => $row['login_resuelto_por'] ?? 'usuario',
+			'origen' => 'SIEst database',
 		];
 	}
 
