@@ -80,4 +80,29 @@ class EmpresaController
 			Response::error('No se pudieron consultar los candidatos', ['detail' => $exception->getMessage()], 500);
 		}
 	}
+
+	public function me(): void
+	{
+		try {
+			$payload = \app\core\AuthMiddleware::requireAuth();
+			if ($payload === null) {
+				return;
+			}
+
+			if ($payload['rol'] !== 'empresa') {
+				Response::error('No tienes permisos de empresa', [], 403);
+				return;
+			}
+
+			if (empty($payload['cve_empresa'])) {
+				Response::error('Empresa no vinculada localmente', [], 404);
+				return;
+			}
+
+			$row = (new Empresa())->find((string) $payload['cve_empresa']);
+			$row === null ? Response::error('Perfil de empresa no encontrado', [], 404) : Response::success($row, 'Mi perfil de empresa');
+		} catch (Throwable $exception) {
+			Response::error('No se pudo consultar tu perfil de empresa', ['detail' => $exception->getMessage()], 500);
+		}
+	}
 }

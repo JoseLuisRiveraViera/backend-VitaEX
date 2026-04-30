@@ -26,6 +26,7 @@ Flight::route('POST /api/auth/login', [AuthController::class, 'login']);
 Flight::route('GET /api/auth/me', [AuthController::class, 'me']);
 
 Flight::route('GET /api/egresados', [EgresadoController::class, 'index']);
+Flight::route('GET /api/egresados/me', [EgresadoController::class, 'me']);
 Flight::route('GET /api/egresados/@cve_egresado', [EgresadoController::class, 'show']);
 Flight::route('GET /api/egresados/@cve_egresado/perfil', [EgresadoController::class, 'perfil']);
 Flight::route('PUT /api/egresados/@cve_egresado/perfil', [EgresadoController::class, 'actualizarPerfil']);
@@ -34,6 +35,7 @@ Flight::route('GET /api/egresados/@cve_egresado/evaluaciones', [EgresadoControll
 Flight::route('GET /api/egresados/@cve_egresado/matching', [EgresadoController::class, 'matching']);
 
 Flight::route('GET /api/empresas', [EmpresaController::class, 'index']);
+Flight::route('GET /api/empresas/me', [EmpresaController::class, 'me']);
 Flight::route('GET /api/empresas/@cve_empresa', [EmpresaController::class, 'show']);
 Flight::route('POST /api/empresas', [EmpresaController::class, 'store']);
 Flight::route('PUT /api/empresas/@cve_empresa', [EmpresaController::class, 'update']);

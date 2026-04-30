@@ -93,4 +93,29 @@ class EgresadoController
 			Response::exception($exception, 'No se pudieron consultar los certificados');
 		}
 	}
+
+	public function me(): void
+	{
+		try {
+			$payload = \app\core\AuthMiddleware::requireAuth();
+			if ($payload === null) {
+				return;
+			}
+
+			if ($payload['rol'] !== 'egresado') {
+				Response::error('No tienes permisos de egresado', [], 403);
+				return;
+			}
+
+			if (empty($payload['cve_egresado'])) {
+				Response::error('Egresado no vinculado localmente', [], 404);
+				return;
+			}
+
+			$row = (new Egresado())->perfil((string) $payload['cve_egresado']);
+			$row === null ? Response::error('Perfil no encontrado', [], 404) : Response::success($row, 'Mi perfil de egresado');
+		} catch (Throwable $exception) {
+			Response::error('No se pudo consultar tu perfil', ['detail' => $exception->getMessage()], 500);
+		}
+	}
 }

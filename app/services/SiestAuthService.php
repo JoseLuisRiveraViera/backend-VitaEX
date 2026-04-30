@@ -21,47 +21,21 @@ class SiestAuthService
 			throw new RuntimeException('Usuario no encontrado en el SIEst simulado local.');
 		}
 
-		if ($driver === 'mock' || filter_var(Env::get('SIEST_AUTH_MOCK', 'false'), FILTER_VALIDATE_BOOLEAN) === true) {
-			return $this->mockLogin($usuario, $contrasena);
-		}
-
 		if ($driver === 'remote') {
+			$isEmail = filter_var($usuario, FILTER_VALIDATE_EMAIL);
+			
+			if ($isEmail !== false) {
+				$localSiest = (new LocalSiestService())->login($usuario, $contrasena);
+				if ($localSiest !== null && isset($localSiest['roles'][0]['id']) && $localSiest['roles'][0]['id'] === '41') {
+					return $localSiest;
+				}
+				throw new RuntimeException('Credenciales inválidas para la empresa.');
+			}
+
 			return $this->remoteLogin($usuario, $contrasena);
 		}
 
-		throw new RuntimeException('SIEST_AUTH_DRIVER inválido. Usa database, mock o remote.');
-	}
-
-	private function mockLogin(string $usuario, string $contrasena): array
-	{
-		$users = [
-			'admin' => ['password' => 'admin123', 'role' => '22', 'cve_persona' => '90001'],
-			'egresado' => ['password' => 'egresado123', 'role' => '40', 'cve_persona' => '12668'],
-			'empresa' => ['password' => 'empresa123', 'role' => '41', 'cve_persona' => '20001'],
-		];
-
-		if (isset($users[$usuario]) === false || $users[$usuario]['password'] !== $contrasena) {
-			throw new RuntimeException('Credenciales inválidas para modo local.');
-		}
-
-		$roleId = $users[$usuario]['role'];
-
-		return [
-			'sub' => $users[$usuario]['cve_persona'],
-			'usuario' => $usuario,
-			'perfil_id' => '1',
-			'cve_persona' => $users[$usuario]['cve_persona'],
-			'cve_division' => '3',
-			'abreviatura_division' => 'DiNE',
-			'roles' => [
-				[
-					'id' => $roleId,
-					'nombre' => $this->roleName($roleId),
-				],
-			],
-			'iat' => time(),
-			'exp' => time() + 3600,
-		];
+		throw new RuntimeException('SIEST_AUTH_DRIVER inválido. Usa database o remote.');
 	}
 
 	private function remoteLogin(string $usuario, string $contrasena): array
