@@ -13,7 +13,7 @@ class DenueService
 		'sistemas' => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
 		'software' => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
 		'arquitectura' => ['keyword' => 'arquitectura', 'scian' => '541310', 'job_titles' => ['arquitecto', 'architecture', 'dibujante', 'proyectista', 'revit', 'autocad', 'bim']],
-		'psicologia' => ['keyword' => 'psicologia', 'scian' => '621330', 'job_titles' => ['psicologo', 'psicóloga', 'recursos humanos', 'reclutador', 'talento humano', 'orientador']],
+		'psicologia' => ['keyword' => 'psicologia', 'scian' => '621330', 'job_titles' => ['psicologo', 'psicologa', 'recursos humanos', 'reclutador', 'talento humano', 'orientador']],
 		'contaduria' => ['keyword' => 'contabilidad', 'scian' => '541211', 'job_titles' => ['contador', 'contable', 'auxiliar contable', 'auditor', 'impuestos', 'nominas']],
 		'contabilidad' => ['keyword' => 'contabilidad', 'scian' => '541211', 'job_titles' => ['contador', 'contable', 'auxiliar contable', 'auditor', 'impuestos', 'nominas']],
 		'industrial' => ['keyword' => 'manufactura', 'scian' => '31-33', 'job_titles' => ['ingeniero industrial', 'calidad', 'procesos', 'produccion', 'manufactura', 'mejora continua', 'seguridad industrial']],
@@ -41,10 +41,7 @@ class DenueService
 	{
 		$token = Env::get('DENUE_TOKEN', '') ?? '';
 		if ($token === '') {
-			if ((Env::get('APP_ENV', 'local') ?? 'local') === 'local') {
-				return $this->mockEmpresas($condicion, $lat, $lon);
-			}
-			throw new RuntimeException('DENUE_TOKEN no está configurado.');
+			throw new RuntimeException('DENUE_TOKEN no esta configurado.');
 		}
 
 		$baseUrl = rtrim(Env::get('DENUE_BASE_URL', 'https://www.inegi.org.mx/app/api/denue/v1/consulta/Buscar') ?? '', '/');
@@ -65,7 +62,7 @@ class DenueService
 
 		$data = json_decode($response, true);
 		if (is_array($data) === false) {
-			throw new RuntimeException('DENUE devolvió una respuesta inválida.');
+			throw new RuntimeException('DENUE devolvio una respuesta invalida.');
 		}
 
 		return $data;
@@ -118,35 +115,5 @@ class DenueService
 	private function formatCoordinate(float $coordinate): string
 	{
 		return number_format($coordinate, 6, '.', '');
-	}
-
-	private function mockEmpresas(string $condicion, float $lat, float $lon): array
-	{
-		return [
-			[
-				'Id' => 'mock-denue-1',
-				'Nombre' => 'Nayarit Software Demo',
-				'Razon_social' => 'Nayarit Software Demo S.A. de C.V.',
-				'Clase_actividad' => 'Servicios de diseño de sistemas de cómputo',
-				'Estrato' => '11 a 30 personas',
-				'Municipio' => 'Santiago Ixcuintla',
-				'Entidad' => 'Nayarit',
-				'Sitio_internet' => 'https://example.com',
-				'Latitud' => (string) $lat,
-				'Longitud' => (string) $lon,
-			],
-			[
-				'Id' => 'mock-denue-2',
-				'Nombre' => 'Costa Tecnología',
-				'Razon_social' => 'Costa Tecnología S.A. de C.V.',
-				'Clase_actividad' => 'Consultoría en computación',
-				'Estrato' => '31 a 50 personas',
-				'Municipio' => 'Tepic',
-				'Entidad' => 'Nayarit',
-				'Sitio_internet' => 'https://example.org',
-				'Latitud' => (string) ($lat + 0.01),
-				'Longitud' => (string) ($lon - 0.01),
-			],
-		];
 	}
 }

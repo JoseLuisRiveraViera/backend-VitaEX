@@ -12,22 +12,17 @@ class ExternalJobsService
 	public function sync(): array
 	{
 		$url = Env::get('EXTERNAL_JOBS_API_URL', '') ?? '';
-		$env = Env::get('APP_ENV', 'local') ?? 'local';
-
 		if ($url === '') {
-			if ($env !== 'local') {
-				throw new RuntimeException('EXTERNAL_JOBS_API_URL no está configurado.');
-			}
-			$jobs = $this->mockJobs();
-			$url = 'local://mock';
-		} else {
-			$response = @file_get_contents($url);
-			if ($response === false) {
-				throw new RuntimeException('No se pudo consumir la API externa de vacantes.');
-			}
-			$decoded = json_decode($response, true);
-			$jobs = is_array($decoded) ? ($decoded['data'] ?? $decoded) : [];
+			throw new RuntimeException('EXTERNAL_JOBS_API_URL no esta configurado.');
 		}
+
+		$response = @file_get_contents($url);
+		if ($response === false) {
+			throw new RuntimeException('No se pudo consumir la API externa de vacantes.');
+		}
+
+		$decoded = json_decode($response, true);
+		$jobs = is_array($decoded) ? ($decoded['data'] ?? $decoded) : [];
 
 		$model = new VacanteNacional();
 		$fuente = $model->fuente('API externa de vacantes', $url);
@@ -62,15 +57,6 @@ class ExternalJobsService
 			'url_original' => $job['url_original'] ?? $job['url'] ?? null,
 			'fecha_publicacion' => $job['fecha_publicacion'] ?? null,
 			'datos_originales' => json_encode($job, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-		];
-	}
-
-	private function mockJobs(): array
-	{
-		return [
-			['id_externo' => 'mock-1', 'titulo' => 'Soporte TI remoto', 'empresa_nombre' => 'Nacional Tech', 'descripcion' => 'Soporte técnico de primer nivel.', 'modalidad' => 'remoto', 'url_original' => 'https://example.com/jobs/mock-1'],
-			['id_externo' => 'mock-2', 'titulo' => 'Analista de datos junior', 'empresa_nombre' => 'Data MX', 'descripcion' => 'Reportes y tableros operativos.', 'modalidad' => 'hibrido', 'url_original' => 'https://example.com/jobs/mock-2'],
-			['id_externo' => 'mock-3', 'titulo' => 'Desarrollador PHP', 'empresa_nombre' => 'Cloud Nacional', 'descripcion' => 'APIs con PHP y PostgreSQL.', 'modalidad' => 'remoto', 'url_original' => 'https://example.com/jobs/mock-3'],
 		];
 	}
 }

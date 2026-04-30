@@ -11,10 +11,6 @@ class SiestAuthService
 	public function login(string $usuario, string $contrasena): array
 	{
 		$driver = strtolower(trim(Env::get('SIEST_AUTH_DRIVER', 'database') ?? 'database'));
-		$mockEnabled = filter_var(Env::get('SIEST_AUTH_MOCK', 'false'), FILTER_VALIDATE_BOOLEAN) === true;
-		if ($driver === 'mock' || $mockEnabled) {
-			throw new RuntimeException('El modo mock de autenticacion esta deshabilitado. Configura SIEST_AUTH_DRIVER=database o remote.');
-		}
 
 		$usuario = trim($usuario);
 		if ($driver === 'database') {
