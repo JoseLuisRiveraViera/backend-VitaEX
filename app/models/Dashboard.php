@@ -7,7 +7,24 @@ class Dashboard extends BaseModel
 {
 	public function insercion(): array
 	{
-		return $this->fetchAll('SELECT * FROM vw_insercion_laboral_por_carrera');
+		return $this->fetchAll(
+			'SELECT
+				c.nombre as carrera,
+				c.clave_oficial as abreviatura,
+				COUNT(DISTINCT e.cve_egresado) as total_egresados,
+				COUNT(DISTINCT con.cve_contratacion) as insertados,
+				CASE
+					WHEN COUNT(DISTINCT e.cve_egresado) > 0
+					THEN ROUND((COUNT(DISTINCT con.cve_contratacion)::numeric / COUNT(DISTINCT e.cve_egresado)::numeric) * 100, 2)
+					ELSE 0
+				END as tasa
+			FROM carrera c
+			LEFT JOIN egresado e ON e.cve_carrera = c.cve_carrera
+			LEFT JOIN postulacion p ON p.cve_egresado = e.cve_egresado
+			LEFT JOIN contratacion con ON con.cve_postulacion = p.cve_postulacion
+			GROUP BY c.cve_carrera, c.nombre, c.clave_oficial
+			ORDER BY tasa DESC, carrera ASC'
+		);
 	}
 
 	public function convenios(): array
@@ -27,7 +44,52 @@ class Dashboard extends BaseModel
 
 	public function competencias(): array
 	{
-		return $this->fetchAll('SELECT * FROM vw_ranking_competencia');
+		$demanda = $this->fetchOne(
+			'SELECT
+				ROUND(AVG(puntaje_psicometrica), 2) as psicometrica,
+				ROUND(AVG(puntaje_cognitiva), 2) as cognitiva,
+				ROUND(AVG(puntaje_tecnica), 2) as tecnica,
+				ROUND(AVG(puntaje_proyectiva), 2) as proyectiva
+			FROM perfil_idoneo'
+		) ?: [
+			'psicometrica' => 0,
+			'cognitiva' => 0,
+			'tecnica' => 0,
+			'proyectiva' => 0
+		];
+
+		$promedio = $this->fetchOne(
+			'SELECT
+				ROUND(AVG(puntaje_psicometrica), 2) as psicometrica,
+				ROUND(AVG(puntaje_cognitiva), 2) as cognitiva,
+				ROUND(AVG(puntaje_tecnica), 2) as tecnica,
+				ROUND(AVG(puntaje_proyectiva), 2) as proyectiva
+			FROM vw_puntaje_egresado'
+		) ?: [
+			'psicometrica' => 0,
+			'cognitiva' => 0,
+			'tecnica' => 0,
+			'proyectiva' => 0
+		];
+
+		$config = [
+			'psicometrica' => 'Psicométrica',
+			'cognitiva' => 'Cognitiva',
+			'tecnica' => 'Técnica',
+			'proyectiva' => 'Proyectiva'
+		];
+
+		$result = [];
+		foreach ($config as $key => $label) {
+			$result[] = [
+				'dimension' => $key,
+				'label' => $label,
+				'demanda' => (float) ($demanda[$key] ?? 0),
+				'promedio' => (float) ($promedio[$key] ?? 0)
+			];
+		}
+
+		return $result;
 	}
 
 	public function empresa(string|int $cveEmpresa): array
