@@ -14,9 +14,9 @@ class VacanteController
 	public function index(): void
 	{
 		try {
-			Response::success((new Vacante())->all(), 'Vacantes encontradas');
+			Response::success((new Vacante())->all(Request::query()), 'Vacantes encontradas');
 		} catch (Throwable $exception) {
-			Response::error('No se pudieron listar las vacantes', ['detail' => $exception->getMessage()], 500);
+			Response::exception($exception, 'No se pudieron listar las vacantes');
 		}
 	}
 
@@ -62,7 +62,12 @@ class VacanteController
 	public function candidatos(string $cve_vacante): void
 	{
 		try {
-			Response::success((new Vacante())->candidatos($cve_vacante), 'Candidatos encontrados');
+			$items = (new Vacante())->candidatos($cve_vacante);
+			$min = Request::query()['porcentaje_minimo'] ?? null;
+			if ($min !== null && is_numeric($min)) {
+				$items = array_values(array_filter($items, static fn(array $item): bool => (float) ($item['porcentaje_coincidencia'] ?? 0) >= (float) $min));
+			}
+			Response::success($items, 'Candidatos encontrados');
 		} catch (Throwable $exception) {
 			Response::error('No se pudieron consultar los candidatos', ['detail' => $exception->getMessage()], 500);
 		}
@@ -81,6 +86,15 @@ class VacanteController
 			Response::success((new Vacante())->crearPerfilIdoneo($cve_vacante, $body), 'Perfil idóneo creado', 201);
 		} catch (Throwable $exception) {
 			Response::error('No se pudo crear el perfil idóneo', ['detail' => $exception->getMessage()], 422);
+		}
+	}
+
+	public function actualizarPerfilIdoneo(string $cve_vacante): void
+	{
+		try {
+			Response::success((new Vacante())->actualizarPerfilIdoneo($cve_vacante, Request::body()), 'Perfil idóneo actualizado');
+		} catch (Throwable $exception) {
+			Response::exception($exception, 'No se pudo actualizar el perfil idóneo');
 		}
 	}
 }

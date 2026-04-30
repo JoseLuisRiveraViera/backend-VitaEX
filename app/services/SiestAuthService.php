@@ -10,23 +10,47 @@ class SiestAuthService
 {
 	public function login(string $usuario, string $contrasena): array
 	{
-		$useMock = filter_var(Env::get('SIEST_AUTH_MOCK', 'true'), FILTER_VALIDATE_BOOLEAN);
-		if ($useMock === true) {
-			return $this->mockLogin($usuario);
+		$driver = Env::get('SIEST_AUTH_DRIVER', 'database') ?? 'database';
+
+		if ($driver === 'database') {
+			$localSiest = (new LocalSiestService())->login($usuario, $contrasena);
+			if ($localSiest !== null) {
+				return $localSiest;
+			}
+
+			throw new RuntimeException('Usuario no encontrado en el SIEst simulado local.');
 		}
 
-		return $this->remoteLogin($usuario, $contrasena);
+		if ($driver === 'mock' || filter_var(Env::get('SIEST_AUTH_MOCK', 'false'), FILTER_VALIDATE_BOOLEAN) === true) {
+			return $this->mockLogin($usuario, $contrasena);
+		}
+
+		if ($driver === 'remote') {
+			return $this->remoteLogin($usuario, $contrasena);
+		}
+
+		throw new RuntimeException('SIEST_AUTH_DRIVER inválido. Usa database, mock o remote.');
 	}
 
-	private function mockLogin(string $usuario): array
+	private function mockLogin(string $usuario, string $contrasena): array
 	{
-		$roleId = Env::get('SIEST_MOCK_ROLE_ID', '40') ?? '40';
+		$users = [
+			'admin' => ['password' => 'admin123', 'role' => '22', 'cve_persona' => '90001'],
+			'egresado' => ['password' => 'egresado123', 'role' => '40', 'cve_persona' => '12668'],
+			'empresa' => ['password' => 'empresa123', 'role' => '41', 'cve_persona' => '20001'],
+		];
+
+		if (isset($users[$usuario]) === false || $users[$usuario]['password'] !== $contrasena) {
+			throw new RuntimeException('Credenciales inválidas para modo local.');
+		}
+
+		$roleId = $users[$usuario]['role'];
 
 		return [
-			'sub' => Env::get('SIEST_MOCK_SUB', '6628'),
+			'sub' => $users[$usuario]['cve_persona'],
 			'usuario' => $usuario,
 			'perfil_id' => '1',
-			'cve_persona' => Env::get('SIEST_MOCK_CVE_PERSONA', '12668'),
+			'cve_persona' => $users[$usuario]['cve_persona'],
 			'cve_division' => '3',
 			'abreviatura_division' => 'DiNE',
 			'roles' => [
@@ -62,13 +86,32 @@ class SiestAuthService
 		$response = curl_exec($ch);
 		$status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 		$error = curl_error($ch);
-		curl_close($ch);
-
 		if ($response === false || $status >= 400) {
 			throw new RuntimeException('SIEst rechazó la autenticación. ' . $error);
 		}
 
 		$decoded = json_decode((string) $response, true);
+		if (is_array($decoded) && isset($decoded['token']) && is_string($decoded['token'])) {
+			$payload = $this->decodeJwtPayload($decoded['token']);
+			if ($payload !== null) {
+				return $payload;
+			}
+		}
+
+		if (is_array($decoded) && isset($decoded['jwt']) && is_string($decoded['jwt'])) {
+			$payload = $this->decodeJwtPayload($decoded['jwt']);
+			if ($payload !== null) {
+				return $payload;
+			}
+		}
+
+		if (is_string($response) && substr_count($response, '.') === 2) {
+			$payload = $this->decodeJwtPayload(trim($response));
+			if ($payload !== null) {
+				return $payload;
+			}
+		}
+
 		if (is_array($decoded) === false) {
 			throw new RuntimeException('Respuesta inválida del servicio SIEst.');
 		}
@@ -76,9 +119,22 @@ class SiestAuthService
 		return $decoded;
 	}
 
+	private function decodeJwtPayload(string $jwt): ?array
+	{
+		$parts = explode('.', $jwt);
+		if (count($parts) !== 3) {
+			return null;
+		}
+
+		$json = base64_decode(strtr($parts[1], '-_', '+/'));
+		$payload = json_decode($json ?: '', true);
+		return is_array($payload) ? $payload : null;
+	}
+
 	private function roleName(string $roleId): string
 	{
 		return match ($roleId) {
+			'1' => 'Administrador',
 			'22' => 'Jefe vinculación / Admin UT',
 			'41' => 'Empresa',
 			default => 'Egresado',

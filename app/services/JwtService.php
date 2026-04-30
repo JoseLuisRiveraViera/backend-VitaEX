@@ -10,6 +10,7 @@ class JwtService
 	public function create(array $payload, int $ttlSeconds = 3600): string
 	{
 		$now = time();
+		$ttlSeconds = (int) (Env::get('JWT_TTL', (string) $ttlSeconds) ?? $ttlSeconds);
 		$payload['iat'] = $payload['iat'] ?? $now;
 		$payload['exp'] = $payload['exp'] ?? ($now + $ttlSeconds);
 

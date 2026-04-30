@@ -48,6 +48,36 @@ abstract class BaseModel
 		return $stmt->rowCount();
 	}
 
+	protected function scalar(string $sql, array $params = []): mixed
+	{
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute($params);
+		return $stmt->fetchColumn();
+	}
+
+	/**
+	 * @return array{items:list<array<string,mixed>>,pagination:array{page:int,limit:int,total:int,total_pages:int}}
+	 */
+	protected function paginate(string $sql, string $countSql, array $params, int $page, int $limit): array
+	{
+		$offset = ($page - 1) * $limit;
+		$items = $this->fetchAll($sql . ' LIMIT :limit OFFSET :offset', array_merge($params, [
+			'limit' => $limit,
+			'offset' => $offset,
+		]));
+		$total = (int) $this->scalar($countSql, $params);
+
+		return [
+			'items' => $items,
+			'pagination' => [
+				'page' => $page,
+				'limit' => $limit,
+				'total' => $total,
+				'total_pages' => (int) ceil($total / $limit),
+			],
+		];
+	}
+
 	/**
 	 * @return list<string>
 	 */
@@ -143,5 +173,16 @@ abstract class BaseModel
 		}
 
 		return '"' . str_replace('"', '""', $name) . '"';
+	}
+
+	protected function hasTable(string $table): bool
+	{
+		return (bool) $this->scalar(
+			'SELECT EXISTS (
+				SELECT 1 FROM information_schema.tables
+				WHERE table_schema = :schema AND table_name = :table
+			)',
+			['schema' => $this->schema, 'table' => $table]
+		);
 	}
 }

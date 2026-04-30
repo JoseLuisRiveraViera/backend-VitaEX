@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\core;
 
 use Flight;
+use Throwable;
 
 class Response
 {
@@ -31,6 +32,13 @@ class Response
 			'message' => $message,
 			'errors' => $errors,
 		], $status);
+	}
+
+	public static function exception(Throwable $exception, string $fallback = 'Error interno del servidor'): void
+	{
+		$normalized = ErrorHandler::normalize($exception);
+		$message = $normalized['message'] !== '' ? $normalized['message'] : $fallback;
+		self::error($message, $normalized['errors'], $normalized['status']);
 	}
 
 	/**

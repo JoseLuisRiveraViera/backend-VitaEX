@@ -5,14 +5,52 @@ namespace app\models;
 
 class Empresa extends BaseModel
 {
-	public function all(): array
+	public function all(array $query = []): array
 	{
-		return $this->fetchAll('SELECT * FROM empresa ORDER BY cve_empresa DESC');
+		$params = [];
+		$where = ['1 = 1'];
+
+		if (!empty($query['search'])) {
+			$where[] = '(razon_social ILIKE :search OR nombre_comercial ILIKE :search OR rfc ILIKE :search)';
+			$params['search'] = '%' . $query['search'] . '%';
+		}
+		if (!empty($query['zona'])) {
+			$where[] = 'zona = :zona';
+			$params['zona'] = $query['zona'];
+		}
+		if (!empty($query['estado'])) {
+			$where[] = 'estado = :estado';
+			$params['estado'] = $query['estado'];
+		}
+
+		$sqlWhere = implode(' AND ', $where);
+		return $this->paginate(
+			'SELECT * FROM empresa WHERE ' . $sqlWhere . ' ORDER BY cve_empresa DESC',
+			'SELECT COUNT(*) FROM empresa WHERE ' . $sqlWhere,
+			$params,
+			(int) ($query['page'] ?? 1),
+			(int) ($query['limit'] ?? 10)
+		);
 	}
 
 	public function find(string|int $cveEmpresa): ?array
 	{
 		return $this->fetchOne('SELECT * FROM empresa WHERE cve_empresa = :cve_empresa', ['cve_empresa' => $cveEmpresa]);
+	}
+
+	public function findByPersonaExterna(string|int $cvePersona): ?array
+	{
+		$columns = $this->tableColumns('empresa');
+		foreach (['cve_persona', 'cve_persona_externa'] as $column) {
+			if (in_array($column, $columns, true)) {
+				return $this->fetchOne(
+					'SELECT * FROM empresa WHERE ' . $this->identifier($column) . ' = :cve_persona',
+					['cve_persona' => (string) $cvePersona]
+				);
+			}
+		}
+
+		return null;
 	}
 
 	public function create(array $data): array

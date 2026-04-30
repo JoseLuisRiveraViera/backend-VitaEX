@@ -15,9 +15,9 @@ class EgresadoController
 	public function index(): void
 	{
 		try {
-			Response::success((new Egresado())->all(), 'Egresados encontrados');
+			Response::success((new Egresado())->all(Request::query()), 'Egresados encontrados');
 		} catch (Throwable $exception) {
-			Response::error('No se pudieron listar los egresados', ['detail' => $exception->getMessage()], 500);
+			Response::exception($exception, 'No se pudieron listar los egresados');
 		}
 	}
 
@@ -82,6 +82,15 @@ class EgresadoController
 			Response::success((new MatchingService())->porEgresado($cve_egresado), 'Matching encontrado');
 		} catch (Throwable $exception) {
 			Response::error('No se pudo consultar el matching', ['detail' => $exception->getMessage()], 500);
+		}
+	}
+
+	public function certificados(string $cve_egresado): void
+	{
+		try {
+			Response::success((new Egresado())->certificados($cve_egresado), 'Certificados encontrados');
+		} catch (Throwable $exception) {
+			Response::exception($exception, 'No se pudieron consultar los certificados');
 		}
 	}
 }

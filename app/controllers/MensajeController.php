@@ -28,6 +28,15 @@ class MensajeController
 		}
 	}
 
+	public function vacante(string $cve_vacante): void
+	{
+		try {
+			Response::success((new Mensaje())->porVacante($cve_vacante), 'Mensajes encontrados');
+		} catch (Throwable $exception) {
+			Response::exception($exception, 'No se pudieron consultar los mensajes');
+		}
+	}
+
 	public function store(): void
 	{
 		try {

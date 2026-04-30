@@ -13,7 +13,25 @@ class Evaluacion extends BaseModel
 	public function preguntas(string|int $cveTipoPrueba): array
 	{
 		return $this->fetchAll(
-			'SELECT p.*, COALESCE(json_agg(o.*) FILTER (WHERE o.cve_opcion_respuesta IS NOT NULL), \'[]\') AS opciones
+			'SELECT
+				p.cve_pregunta,
+				p.cve_prueba,
+				p.texto,
+				p.tipo_pregunta,
+				p.orden,
+				p.ponderacion,
+				COALESCE(
+					json_agg(
+						json_build_object(
+							\'cve_opcion_respuesta\', o.cve_opcion_respuesta,
+							\'cve_pregunta\', o.cve_pregunta,
+							\'texto\', o.texto,
+							\'orden\', o.orden
+						)
+						ORDER BY o.orden
+					) FILTER (WHERE o.cve_opcion_respuesta IS NOT NULL),
+					\'[]\'
+				) AS opciones
 			FROM pregunta p
 			JOIN prueba pr ON pr.cve_prueba = p.cve_prueba
 			LEFT JOIN opcion_respuesta o ON o.cve_pregunta = p.cve_pregunta
@@ -32,13 +50,30 @@ class Evaluacion extends BaseModel
 
 	public function iniciar(array $data): array
 	{
+		$data['estado'] = $data['estado'] ?? 'iniciada';
+		$data['fecha_inicio'] = $data['fecha_inicio'] ?? date('c');
 		return $this->insert('evaluacion', $this->filterTableData('evaluacion', $data, ['cve_evaluacion']), 'cve_evaluacion');
 	}
 
 	public function responder(string|int $cveEvaluacion, array $data): array
 	{
 		$data['cve_evaluacion'] = $cveEvaluacion;
-		return $this->insert('respuesta_evaluacion', $this->filterTableData('respuesta_evaluacion', $data, ['cve_respuesta_evaluacion']), 'cve_respuesta_evaluacion');
+		$this->db->beginTransaction();
+		try {
+			$this->execute(
+				'DELETE FROM respuesta_evaluacion WHERE cve_evaluacion = :cve_evaluacion AND cve_pregunta = :cve_pregunta',
+				[
+					'cve_evaluacion' => $cveEvaluacion,
+					'cve_pregunta' => $data['cve_pregunta'] ?? 0,
+				]
+			);
+			$row = $this->insert('respuesta_evaluacion', $this->filterTableData('respuesta_evaluacion', $data, ['cve_respuesta_evaluacion']), 'cve_respuesta_evaluacion');
+			$this->db->commit();
+			return $row;
+		} catch (\Throwable $exception) {
+			$this->db->rollBack();
+			throw $exception;
+		}
 	}
 
 	public function finalizar(string|int $cveEvaluacion, array $data): ?array

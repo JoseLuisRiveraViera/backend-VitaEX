@@ -1,42 +1,19 @@
 # Bolsa de Trabajo UT de la Costa API
 
-Backend PHP 8+ con FlightPHP, Composer, PDO y PostgreSQL 16 para la plataforma Bolsa de Trabajo UT de la Costa.
+Backend PHP 8+, FlightPHP, Composer, PDO y PostgreSQL 16 para vinculación laboral entre egresados UT de la Costa y empresas.
 
-## Estructura principal
+## Requisitos
 
-```text
-public/
-  index.php
-app/
-  config/      env, cors y conexion PDO PostgreSQL
-  core/        Response, Request, Validator y AuthMiddleware
-  controllers/ Controladores REST
-  models/      Consultas PDO preparadas
-  routes/      Rutas API FlightPHP
-  services/    SIEst, JWT y consultas de matching
-```
+- PHP 8.1+
+- Composer
+- PostgreSQL 16
+- Extensiones PHP: `pdo`, `pdo_pgsql`, `json`, `curl`
 
-## Ejecutar localmente
+## Instalación
 
 ```bash
 composer install
 cp .env.example .env
-```
-
-Configura tus credenciales PostgreSQL en `.env`:
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_NAME=bolsa_trabajo_ut
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_SCHEMA=bolsa_trabajo
-```
-
-Inicia el servidor:
-
-```bash
 php -S localhost:8000 -t public
 ```
 
@@ -46,46 +23,178 @@ Health check:
 GET http://localhost:8000/api/health
 ```
 
-## Autenticación
-
-El login real con SIEst está aislado en `app/services/SiestAuthService.php`. Por defecto usa simulación:
-
-```env
-SIEST_AUTH_MOCK=true
-```
-
-Para conectar al SIEst real:
-
-```env
-SIEST_AUTH_MOCK=false
-SIEST_LOGIN_URL=https://www.utdelacosta.edu.mx/SIEstBackend/api/v1/login
-```
-
-No se guardan contraseñas en esta base de datos.
-
-## Respuesta estándar
-
-Éxito:
+Respuesta esperada:
 
 ```json
 {
   "success": true,
-  "message": "Mensaje",
-  "data": {}
+  "message": "API Bolsa de Trabajo UT funcionando",
+  "data": {
+    "status": "ok"
+  }
 }
 ```
 
-Error:
+## Configuración
+
+```env
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=bolsa_trabajo
+DB_USER=postgres
+DB_PASSWORD=password
+DB_SCHEMA=bolsa_trabajo
+FRONTEND_URL=http://localhost:4200
+JWT_SECRET=change_me
+JWT_TTL=3600
+SIEST_AUTH_DRIVER=database
+EXTERNAL_JOBS_API_URL=
+```
+
+La conexión PDO configura `SET search_path TO bolsa_trabajo`.
+
+## Seed
+
+El seed no modifica el DDL:
+
+```bash
+psql -h localhost -U postgres -d bolsa_trabajo -f database/seed.sql
+```
+
+## Roles
+
+- `admin`: roles SIEst `1` o `22`
+- `egresado`: rol SIEst `40`
+- `empresa`: rol SIEst `41`
+
+Con el DDL `siest_simulado_v3`, el backend autentica contra `vw_usuario_siest_login`/`usuario_siest` usando `password_verify()`. Ese es el modo por defecto con `SIEST_AUTH_DRIVER=database`.
+
+Usuarios seed del DDL v3:
 
 ```json
-{
-  "success": false,
-  "message": "Mensaje de error",
-  "errors": {}
-}
+{ "usuario": "hackaton-2026", "contrasena": "testing2026" }
+{ "usuario": "egresado-2026", "contrasena": "testing2026" }
+{ "usuario": "empresa-2026", "contrasena": "testing2026" }
+{ "usuario": "admin-2026", "contrasena": "testing2026" }
 ```
 
-## Ejemplos Postman
+Los endpoints reales de SIEst ya no son necesarios para el hackathon. Solo se usarían si cambias:
+
+```env
+SIEST_AUTH_DRIVER=remote
+SIEST_LOGIN_URL=https://www.utdelacosta.edu.mx/SIEstBackend/api/v1/login
+SIEST_EGRESADO_URL=https://www.utdelacosta.edu.mx/SIEstBackend/api/v1/egresados
+```
+
+También existe `SIEST_AUTH_DRIVER=mock` para usuarios hardcodeados de desarrollo (`admin/admin123`, `egresado/egresado123`, `empresa/empresa123`).
+
+## Endpoints
+
+### Auth
+
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+
+### Egresados
+
+- `GET /api/egresados`
+- `GET /api/egresados/{cve_egresado}`
+- `GET /api/egresados/{cve_egresado}/perfil`
+- `PUT /api/egresados/{cve_egresado}/perfil`
+- `GET /api/egresados/{cve_egresado}/postulaciones`
+- `GET /api/egresados/{cve_egresado}/evaluaciones`
+- `GET /api/egresados/{cve_egresado}/matching`
+- `GET /api/egresados/{cve_egresado}/certificados`
+
+### Empresas y Convenios
+
+- `GET /api/empresas`
+- `GET /api/empresas/{cve_empresa}`
+- `POST /api/empresas`
+- `PUT /api/empresas/{cve_empresa}`
+- `GET /api/empresas/{cve_empresa}/vacantes`
+- `GET /api/empresas/{cve_empresa}/candidatos`
+- `POST /api/solicitudes-convenio`
+- `GET /api/solicitudes-convenio`
+- `PUT /api/solicitudes-convenio/{cve_solicitud_convenio}`
+
+### Vacantes, Evaluaciones y Preguntas
+
+- `GET /api/vacantes`
+- `GET /api/vacantes/{cve_vacante}`
+- `POST /api/vacantes`
+- `PUT /api/vacantes/{cve_vacante}`
+- `DELETE /api/vacantes/{cve_vacante}`
+- `GET /api/vacantes/{cve_vacante}/candidatos?porcentaje_minimo=80`
+- `POST /api/vacantes/{cve_vacante}/perfil-idoneo`
+- `PUT /api/vacantes/{cve_vacante}/perfil-idoneo`
+- `GET /api/tipos-prueba`
+- `GET /api/evaluaciones/preguntas/{cve_tipo_prueba}`
+- `POST /api/evaluaciones/iniciar`
+- `POST /api/evaluaciones/{cve_evaluacion}/responder`
+- `POST /api/evaluaciones/{cve_evaluacion}/finalizar`
+- `GET /api/preguntas`
+- `POST /api/preguntas`
+
+### Postulaciones, Mensajes y Contrataciones
+
+- `POST /api/postulaciones`
+- `GET /api/postulaciones`
+- `GET /api/postulaciones/{cve_postulacion}`
+- `PUT /api/postulaciones/{cve_postulacion}/estatus`
+- `GET /api/vacantes/{cve_vacante}/postulaciones`
+- `GET /api/mensajes/egresado/{cve_egresado}`
+- `GET /api/mensajes/empresa/{cve_empresa}`
+- `GET /api/mensajes/vacante/{cve_vacante}`
+- `POST /api/mensajes`
+- `PUT /api/mensajes/{cve_mensaje}/leido`
+- `GET /api/contrataciones`
+- `POST /api/contrataciones`
+- `PUT /api/contrataciones/{cve_contratacion}/confirmar-egresado`
+
+### Certificados, Vacantes Nacionales y Reportes
+
+- `POST /api/egresados/{cve_egresado}/certificados`
+- `PUT /api/certificados/{cve_certificado}`
+- `DELETE /api/certificados/{cve_certificado}`
+- `PUT /api/certificados/{cve_certificado}/validar`
+- `GET /api/vacantes-nacionales`
+- `POST /api/vacantes-nacionales/sincronizar`
+- `GET /api/reportes/insercion/pdf`
+- `GET /api/reportes/convenios/pdf`
+- `GET /api/reportes/egresado/{cve_egresado}/pdf`
+- `GET /api/reportes/vacantes/excel`
+
+### DENUE + TheirStack
+
+- `GET /api/denue/empresas?carrera=TI&lat=21.8120&lon=-105.2080&radio=5000`
+- `GET /api/theirstack/vacantes?empresa=Nayarit%20Software`
+- `GET /api/theirstack/vacantes?empresa=Nayarit%20Software&titulos=developer,programador,javascript,python`
+- `GET /api/mercado-laboral/empresas-vacantes?carrera=TI&lat=21.8120&lon=-105.2080&radio=5000&limit=10`
+
+Flujo combinado:
+
+1. DENUE busca empresas mexicanas cercanas por carrera usando palabra clave/SCIAN.
+2. TheirStack verifica si esas empresas tienen vacantes activas.
+3. TheirStack siempre se consulta con `job_country_code_or = ["MX"]` para limitar resultados a México.
+4. TheirStack filtra por `job_title_or`; no se usa búsqueda por descripción.
+
+Variables necesarias:
+
+```env
+DENUE_TOKEN=tu_token_inegi
+DENUE_BASE_URL=https://www.inegi.org.mx/app/api/denue/v1/consulta/Buscar
+THEIRSTACK_API_KEY=tu_api_key
+THEIRSTACK_BASE_URL=https://api.theirstack.com/v1/jobs/search
+THEIRSTACK_COUNTRY_CODE=MX
+```
+
+Para TI/Sistemas se usan títulos como `developer`, `programador`, `desarrollador`, `javascript`, `python`, `php`, `frontend`, `backend`, `full stack`. Puedes sobrescribirlos por request con `titulos=...`.
+
+## Ejemplos JSON
 
 Crear empresa:
 
@@ -108,22 +217,18 @@ Crear vacante con perfil idóneo:
 ```json
 {
   "cve_empresa": 1,
-  "titulo": "Desarrollador Backend PHP",
-  "descripcion": "Desarrollo de APIs REST con PHP y PostgreSQL.",
-  "area": "Desarrollo de software",
+  "titulo": "Desarrollador Web Junior",
+  "descripcion": "Desarrollo de aplicaciones con Angular, PHP y PostgreSQL",
+  "area": "Tecnologías de la información",
   "modalidad": "hibrido",
-  "salario_minimo": 12000,
-  "salario_maximo": 18000,
+  "salario_minimo": 10000,
+  "salario_maximo": 15000,
   "estado": "publicada",
   "perfil_idoneo": {
-    "puntaje_psicometrica": 80,
-    "puntaje_cognitiva": 85,
-    "puntaje_tecnica": 90,
-    "puntaje_proyectiva": 75,
-    "peso_psicometrica": 25,
-    "peso_cognitiva": 25,
-    "peso_tecnica": 25,
-    "peso_proyectiva": 25
+    "puntaje_psicometrica": 75,
+    "puntaje_cognitiva": 80,
+    "puntaje_tecnica": 85,
+    "puntaje_proyectiva": 70
   }
 }
 ```
@@ -135,34 +240,38 @@ Actualizar perfil de egresado:
   "telefono": "3231000001",
   "correo_personal": "egresado@gmail.com",
   "url_foto": "https://example.com/fotos/egresado-1.jpg",
-  "disponible_laboralmente": true,
-  "resumen_profesional": "Desarrollador backend con experiencia en PHP, PostgreSQL y Angular.",
-  "url_cv": "https://example.com/cv.pdf"
+  "url_cv": "https://example.com/cv.pdf",
+  "resumen_profesional": "Backend PHP con PostgreSQL."
 }
 ```
 
-Postular egresado a vacante:
+Evaluación:
 
 ```json
-{
-  "cve_egresado": 1,
-  "cve_vacante": 1
-}
+{ "cve_egresado": 1, "cve_prueba": 1 }
 ```
-
-Crear solicitud de convenio:
 
 ```json
-{
-  "cve_empresa": 1,
-  "motivo": "Convenio para estadías e inserción laboral",
-  "origen": "plataforma",
-  "estado": "pendiente",
-  "observacion": "Solicitud generada desde el portal de empresas."
-}
+{ "cve_pregunta": 1, "cve_opcion_respuesta": 1 }
 ```
 
-Crear mensaje:
+```json
+{ "estado": "finalizada" }
+```
+
+Postular a vacante:
+
+```json
+{ "cve_egresado": 1, "cve_vacante": 1 }
+```
+
+Cambiar a contratado:
+
+```json
+{ "estado": "contratado", "puesto": "Desarrollador Web Junior" }
+```
+
+Enviar mensaje:
 
 ```json
 {
@@ -172,13 +281,29 @@ Crear mensaje:
 }
 ```
 
-Responder evaluación:
+Consultar empresas cercanas con vacantes activas en México:
+
+```http
+GET /api/mercado-laboral/empresas-vacantes?carrera=TI&lat=21.8120&lon=-105.2080&radio=5000&limit=10
+```
+
+Crear solicitud de convenio:
 
 ```json
 {
-  "cve_pregunta": 1,
-  "cve_opcion_respuesta": 3
+  "cve_empresa": 1,
+  "motivo": "Convenio para estadías e inserción laboral",
+  "origen": "plataforma",
+  "estado": "pendiente"
 }
 ```
 
-Los payloads se filtran contra columnas reales de PostgreSQL para no inventar campos; ajusta los valores a los catálogos y enums definidos en el schema `bolsa_trabajo`.
+## Notas de implementación
+
+- No se guardan contraseñas.
+- Las consultas usan PDO y prepared statements.
+- El backend no recalcula matching al postular; PostgreSQL lo hace con triggers.
+- `DELETE /api/vacantes/{id}` usa soft delete con `estado = 'cancelada'` porque el DDL actual no tiene columna `activo`.
+- Certificados usan `documento_egresado`; el delete es físico porque esa tabla no tiene columna `activo`.
+- Preguntas usan `estado = 'inactivo'` como soft delete.
+- Reportes usan `dompdf/dompdf` y `phpoffice/phpspreadsheet`.

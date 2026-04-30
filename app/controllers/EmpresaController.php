@@ -14,9 +14,9 @@ class EmpresaController
 	public function index(): void
 	{
 		try {
-			Response::success((new Empresa())->all(), 'Empresas encontradas');
+			Response::success((new Empresa())->all(Request::query()), 'Empresas encontradas');
 		} catch (Throwable $exception) {
-			Response::error('No se pudieron listar las empresas', ['detail' => $exception->getMessage()], 500);
+			Response::exception($exception, 'No se pudieron listar las empresas');
 		}
 	}
 

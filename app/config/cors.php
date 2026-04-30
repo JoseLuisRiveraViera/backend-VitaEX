@@ -8,7 +8,8 @@ class Cors
 	public static function apply(): void
 	{
 		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-		$allowedOrigins = array_filter(array_map('trim', explode(',', Env::get('CORS_ALLOWED_ORIGINS', 'http://localhost:4200') ?? '')));
+		$defaultOrigin = Env::get('FRONTEND_URL', 'http://localhost:4200') ?? 'http://localhost:4200';
+		$allowedOrigins = array_filter(array_map('trim', explode(',', Env::get('CORS_ALLOWED_ORIGINS', $defaultOrigin) ?? '')));
 
 		if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
 			header('Access-Control-Allow-Origin: ' . $origin);

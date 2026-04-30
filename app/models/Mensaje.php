@@ -30,8 +30,36 @@ class Mensaje extends BaseModel
 		);
 	}
 
+	public function porVacante(string|int $cveVacante): array
+	{
+		return $this->fetchAll(
+			'SELECT m.*
+			FROM mensaje m
+			JOIN postulacion p ON p.cve_postulacion = m.cve_postulacion
+			WHERE p.cve_vacante = :cve_vacante
+			ORDER BY m.cve_mensaje DESC',
+			['cve_vacante' => $cveVacante]
+		);
+	}
+
 	public function create(array $data): array
 	{
+		if (empty($data['cve_postulacion']) && !empty($data['cve_egresado']) && !empty($data['cve_vacante'])) {
+			$postulacion = $this->fetchOne(
+				'SELECT * FROM postulacion WHERE cve_egresado = :cve_egresado AND cve_vacante = :cve_vacante',
+				['cve_egresado' => $data['cve_egresado'], 'cve_vacante' => $data['cve_vacante']]
+			);
+			if ($postulacion !== null) {
+				$data['cve_postulacion'] = $postulacion['cve_postulacion'];
+			}
+		}
+		if (isset($data['remitente']) && empty($data['tipo_emisor'])) {
+			$data['tipo_emisor'] = $data['remitente'];
+		}
+		if (isset($data['contenido']) && empty($data['mensaje'])) {
+			$data['mensaje'] = $data['contenido'];
+		}
+		unset($data['cve_egresado'], $data['cve_empresa'], $data['cve_vacante'], $data['remitente'], $data['contenido']);
 		return $this->insert('mensaje', $this->filterTableData('mensaje', $data, ['cve_mensaje']), 'cve_mensaje');
 	}
 

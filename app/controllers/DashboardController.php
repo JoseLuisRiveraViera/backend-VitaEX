@@ -53,4 +53,13 @@ class DashboardController
 			Response::error('No se pudo consultar dashboard de egresado', ['detail' => $exception->getMessage()], 500);
 		}
 	}
+
+	public function vacantes(): void
+	{
+		try {
+			Response::success((new Dashboard())->vacantes(), 'Dashboard de vacantes');
+		} catch (Throwable $exception) {
+			Response::exception($exception, 'No se pudo consultar dashboard de vacantes');
+		}
+	}
 }

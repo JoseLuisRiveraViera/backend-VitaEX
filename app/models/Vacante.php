@@ -5,9 +5,34 @@ namespace app\models;
 
 class Vacante extends BaseModel
 {
-	public function all(): array
+	public function all(array $query = []): array
 	{
-		return $this->fetchAll('SELECT * FROM vw_vacante_completa');
+		$params = [];
+		$where = ['1 = 1'];
+
+		if (!empty($query['search'])) {
+			$where[] = '(titulo ILIKE :search OR descripcion ILIKE :search OR razon_social ILIKE :search)';
+			$params['search'] = '%' . $query['search'] . '%';
+		}
+		foreach (['area', 'municipio', 'estado'] as $field) {
+			if (!empty($query[$field])) {
+				$where[] = $this->identifier($field) . ' = :' . $field;
+				$params[$field] = $query[$field];
+			}
+		}
+		if (!empty($query['zona'])) {
+			$where[] = 'zona = :zona';
+			$params['zona'] = $query['zona'];
+		}
+
+		$sqlWhere = implode(' AND ', $where);
+		return $this->paginate(
+			'SELECT * FROM vw_vacante_completa WHERE ' . $sqlWhere . ' ORDER BY fecha_publicacion DESC, cve_vacante DESC',
+			'SELECT COUNT(*) FROM vw_vacante_completa WHERE ' . $sqlWhere,
+			$params,
+			(int) ($query['page'] ?? 1),
+			(int) ($query['limit'] ?? 10)
+		);
 	}
 
 	public function find(string|int $cveVacante): ?array
@@ -60,5 +85,15 @@ class Vacante extends BaseModel
 	{
 		$data['cve_vacante'] = $cveVacante;
 		return $this->insert('perfil_idoneo', $this->filterTableData('perfil_idoneo', $data, ['cve_perfil_idoneo']), 'cve_perfil_idoneo');
+	}
+
+	public function actualizarPerfilIdoneo(string|int $cveVacante, array $data): ?array
+	{
+		$current = $this->fetchOne('SELECT * FROM perfil_idoneo WHERE cve_vacante = :cve_vacante', ['cve_vacante' => $cveVacante]);
+		if ($current === null) {
+			return $this->crearPerfilIdoneo($cveVacante, $data);
+		}
+
+		return $this->updateById('perfil_idoneo', 'cve_perfil_idoneo', $current['cve_perfil_idoneo'], $this->filterTableData('perfil_idoneo', $data, ['cve_perfil_idoneo', 'cve_vacante']));
 	}
 }
