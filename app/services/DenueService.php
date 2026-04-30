@@ -52,8 +52,8 @@ class DenueService
 			'%s/%s/%s,%s/%d/%s',
 			$baseUrl,
 			rawurlencode($condicion),
-			$lat,
-			$lon,
+			$this->formatCoordinate($lat),
+			$this->formatCoordinate($lon),
 			min($radio, 5000),
 			rawurlencode($token)
 		);
@@ -113,6 +113,11 @@ class DenueService
 		$value = mb_strtolower($value);
 		$transliterated = iconv('UTF-8', 'ASCII//TRANSLIT', $value);
 		return $transliterated === false ? $value : $transliterated;
+	}
+
+	private function formatCoordinate(float $coordinate): string
+	{
+		return number_format($coordinate, 6, '.', '');
 	}
 
 	private function mockEmpresas(string $condicion, float $lat, float $lon): array
