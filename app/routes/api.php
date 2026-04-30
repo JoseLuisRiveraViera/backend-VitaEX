@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use app\controllers\AuthController;
 use app\controllers\DashboardController;
+use app\controllers\DenueController;
 use app\controllers\EgresadoController;
 use app\controllers\EmpresaController;
 use app\controllers\EvaluacionController;
@@ -18,6 +19,10 @@ Flight::route('GET /api/health', function (): void {
 
 Flight::route('POST /api/auth/login', [AuthController::class, 'login']);
 Flight::route('GET /api/auth/me', [AuthController::class, 'me']);
+
+Flight::route('GET /api/denue/carreras', [DenueController::class, 'carreras']);
+Flight::route('GET /api/denue/empresas', [DenueController::class, 'buscar']);
+Flight::route('POST /api/denue/empresas/importar', [DenueController::class, 'importar']);
 
 Flight::route('GET /api/egresados', [EgresadoController::class, 'index']);
 Flight::route('GET /api/egresados/@cve_egresado', [EgresadoController::class, 'show']);

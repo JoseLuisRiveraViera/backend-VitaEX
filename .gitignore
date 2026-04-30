@@ -4,3 +4,4 @@ app/config/config.php
 app/log/*
 .vagrant/
 .runway-creds.json
+.cursor
