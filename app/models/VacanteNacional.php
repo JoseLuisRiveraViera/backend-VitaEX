@@ -23,6 +23,16 @@ class VacanteNacional extends BaseModel
 		);
 	}
 
+	public function find(string|int $cveVacanteApi): ?array
+	{
+		return $this->fetchOne(
+			'SELECT *
+			FROM vacante_api
+			WHERE cve_vacante_api = :cve_vacante_api',
+			['cve_vacante_api' => $cveVacanteApi]
+		);
+	}
+
 	public function fuente(string $nombre, string $url): array
 	{
 		return $this->fetchOne(

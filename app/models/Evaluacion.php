@@ -26,6 +26,8 @@ class Evaluacion extends BaseModel
 							\'cve_opcion_respuesta\', o.cve_opcion_respuesta,
 							\'cve_pregunta\', o.cve_pregunta,
 							\'texto\', o.texto,
+							\'valor\', o.valor,
+							\'es_correcta\', o.es_correcta,
 							\'orden\', o.orden
 						)
 						ORDER BY o.orden

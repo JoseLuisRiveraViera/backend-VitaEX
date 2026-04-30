@@ -17,6 +17,18 @@ class VacanteNacionalController
 		catch (Throwable $e) { Response::exception($e, 'No se pudieron consultar vacantes nacionales'); }
 	}
 
+	public function show(string $cve_vacante_api): void
+	{
+		try {
+			$row = (new VacanteNacional())->find($cve_vacante_api);
+			$row === null
+				? Response::error('Vacante nacional no encontrada', [], 404)
+				: Response::success($row, 'Vacante nacional encontrada');
+		} catch (Throwable $e) {
+			Response::exception($e, 'No se pudo consultar la vacante nacional');
+		}
+	}
+
 	public function sincronizar(): void
 	{
 		try { Response::success((new ExternalJobsService())->sync(), 'Sincronización finalizada'); }

@@ -8,9 +8,18 @@ class Mensaje extends BaseModel
 	public function porEgresado(string|int $cveEgresado): array
 	{
 		return $this->fetchAll(
-			'SELECT m.*
+			'SELECT
+				m.*,
+				p.cve_egresado,
+				p.cve_vacante,
+				e.nombre,
+				e.primer_apellido,
+				e.segundo_apellido,
+				v.titulo AS vacante
 			FROM mensaje m
 			JOIN postulacion p ON p.cve_postulacion = m.cve_postulacion
+			JOIN egresado e ON e.cve_egresado = p.cve_egresado
+			JOIN vacante v ON v.cve_vacante = p.cve_vacante
 			WHERE p.cve_egresado = :cve_egresado
 			ORDER BY m.cve_mensaje DESC',
 			['cve_egresado' => $cveEgresado]
@@ -20,10 +29,18 @@ class Mensaje extends BaseModel
 	public function porEmpresa(string|int $cveEmpresa): array
 	{
 		return $this->fetchAll(
-			'SELECT m.*
+			'SELECT
+				m.*,
+				p.cve_egresado,
+				p.cve_vacante,
+				e.nombre,
+				e.primer_apellido,
+				e.segundo_apellido,
+				v.titulo AS vacante
 			FROM mensaje m
 			JOIN postulacion p ON p.cve_postulacion = m.cve_postulacion
 			JOIN vacante v ON v.cve_vacante = p.cve_vacante
+			JOIN egresado e ON e.cve_egresado = p.cve_egresado
 			WHERE v.cve_empresa = :cve_empresa
 			ORDER BY m.cve_mensaje DESC',
 			['cve_empresa' => $cveEmpresa]
@@ -33,9 +50,18 @@ class Mensaje extends BaseModel
 	public function porVacante(string|int $cveVacante): array
 	{
 		return $this->fetchAll(
-			'SELECT m.*
+			'SELECT
+				m.*,
+				p.cve_egresado,
+				p.cve_vacante,
+				e.nombre,
+				e.primer_apellido,
+				e.segundo_apellido,
+				v.titulo AS vacante
 			FROM mensaje m
 			JOIN postulacion p ON p.cve_postulacion = m.cve_postulacion
+			JOIN egresado e ON e.cve_egresado = p.cve_egresado
+			JOIN vacante v ON v.cve_vacante = p.cve_vacante
 			WHERE p.cve_vacante = :cve_vacante
 			ORDER BY m.cve_mensaje DESC',
 			['cve_vacante' => $cveVacante]
@@ -51,6 +77,12 @@ class Mensaje extends BaseModel
 			);
 			if ($postulacion !== null) {
 				$data['cve_postulacion'] = $postulacion['cve_postulacion'];
+			} else {
+				$nueva = $this->insert('postulacion', [
+					'cve_egresado' => $data['cve_egresado'],
+					'cve_vacante' => $data['cve_vacante'],
+				], 'cve_postulacion');
+				$data['cve_postulacion'] = $nueva['cve_postulacion'];
 			}
 		}
 		if (isset($data['remitente']) && empty($data['tipo_emisor'])) {

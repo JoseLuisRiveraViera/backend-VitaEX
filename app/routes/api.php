@@ -93,6 +93,7 @@ Flight::route('GET /api/empresas/@cve_empresa/preguntas-tecnicas', [PreguntaCont
 Flight::route('POST /api/empresas/@cve_empresa/preguntas-tecnicas', [PreguntaController::class, 'storeTecnicaEmpresa']);
 
 Flight::route('GET /api/vacantes-nacionales', [VacanteNacionalController::class, 'index']);
+Flight::route('GET /api/vacantes-nacionales/@cve_vacante_api', [VacanteNacionalController::class, 'show']);
 Flight::route('POST /api/vacantes-nacionales/sincronizar', [VacanteNacionalController::class, 'sincronizar']);
 
 Flight::route('GET /api/mercado-laboral/empresas-vacantes', [LaborMarketController::class, 'empresasVacantes']);

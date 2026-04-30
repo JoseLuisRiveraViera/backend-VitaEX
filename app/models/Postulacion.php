@@ -10,21 +10,21 @@ class Postulacion extends BaseModel
 		$params = [];
 		$where = ['1 = 1'];
 		if (!empty($query['estatus'])) {
-			$where[] = 'estado = :estado';
+			$where[] = 'p.estado = :estado';
 			$params['estado'] = $query['estatus'];
 		}
 		if (!empty($query['cve_vacante'])) {
-			$where[] = 'cve_vacante = :cve_vacante';
+			$where[] = 'p.cve_vacante = :cve_vacante';
 			$params['cve_vacante'] = $query['cve_vacante'];
 		}
 		if (!empty($query['cve_egresado'])) {
-			$where[] = 'cve_egresado = :cve_egresado';
+			$where[] = 'p.cve_egresado = :cve_egresado';
 			$params['cve_egresado'] = $query['cve_egresado'];
 		}
 		$sqlWhere = implode(' AND ', $where);
 		return $this->paginate(
-			'SELECT * FROM postulacion WHERE ' . $sqlWhere . ' ORDER BY cve_postulacion DESC',
-			'SELECT COUNT(*) FROM postulacion WHERE ' . $sqlWhere,
+			$this->selectSql() . ' WHERE ' . $sqlWhere . ' ORDER BY p.cve_postulacion DESC',
+			'SELECT COUNT(*) FROM postulacion p WHERE ' . $sqlWhere,
 			$params,
 			(int) ($query['page'] ?? 1),
 			(int) ($query['limit'] ?? 10)
@@ -33,7 +33,7 @@ class Postulacion extends BaseModel
 
 	public function find(string|int $id): ?array
 	{
-		return $this->fetchOne('SELECT * FROM postulacion WHERE cve_postulacion = :id', ['id' => $id]);
+		return $this->fetchOne($this->selectSql() . ' WHERE p.cve_postulacion = :id', ['id' => $id]);
 	}
 
 	public function create(string|int $cveEgresado, string|int $cveVacante): array
@@ -78,6 +78,25 @@ class Postulacion extends BaseModel
 
 	public function porVacante(string|int $cveVacante): array
 	{
-		return $this->fetchAll('SELECT * FROM postulacion WHERE cve_vacante = :cve_vacante ORDER BY cve_postulacion DESC', ['cve_vacante' => $cveVacante]);
+		return $this->fetchAll(
+			$this->selectSql() . ' WHERE p.cve_vacante = :cve_vacante ORDER BY p.cve_postulacion DESC',
+			['cve_vacante' => $cveVacante]
+		);
+	}
+
+	private function selectSql(): string
+	{
+		return 'SELECT
+				p.*,
+				e.nombre,
+				e.primer_apellido,
+				e.segundo_apellido,
+				v.titulo AS vacante,
+				v.razon_social AS empresa,
+				v.nombre_comercial,
+				v.area
+			FROM postulacion p
+			JOIN egresado e ON e.cve_egresado = p.cve_egresado
+			JOIN vw_vacante_completa v ON v.cve_vacante = p.cve_vacante';
 	}
 }

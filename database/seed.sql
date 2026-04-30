@@ -48,6 +48,20 @@ SELECT
 FROM generate_series(1, 10) AS n
 ON CONFLICT (matricula) DO NOTHING;
 
+WITH primer_egresado AS (
+    SELECT cve_egresado
+    FROM egresado
+    WHERE NOT EXISTS (
+        SELECT 1 FROM egresado WHERE cve_persona_externa = 'SIEST-PER-1001'
+    )
+    ORDER BY cve_egresado
+    LIMIT 1
+)
+UPDATE egresado e
+SET cve_persona_externa = 'SIEST-PER-1001'
+FROM primer_egresado pe
+WHERE e.cve_egresado = pe.cve_egresado;
+
 INSERT INTO empresa (razon_social, nombre_comercial, rfc, sector, sitio_web, url_foto, correo_general, telefono_general, cve_ubicacion, zona)
 VALUES
 ('Nayarit Software 1 S.A. de C.V.', 'Nayarit Software 1', 'NSO240101AA1', 'Tecnología', 'https://example.com/ns1', 'https://example.com/logos/ns1.png', 'contacto1@example.com', '3231000101', (SELECT cve_ubicacion FROM ubicacion WHERE municipio = 'Santiago Ixcuintla' LIMIT 1), 'norte_nayarit'),

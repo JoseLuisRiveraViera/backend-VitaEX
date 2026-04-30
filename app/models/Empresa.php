@@ -11,22 +11,22 @@ class Empresa extends BaseModel
 		$where = ['1 = 1'];
 
 		if (!empty($query['search'])) {
-			$where[] = '(razon_social ILIKE :search OR nombre_comercial ILIKE :search OR rfc ILIKE :search)';
+			$where[] = '(e.razon_social ILIKE :search OR e.nombre_comercial ILIKE :search OR e.rfc ILIKE :search)';
 			$params['search'] = '%' . $query['search'] . '%';
 		}
 		if (!empty($query['zona'])) {
-			$where[] = 'zona = :zona';
-			$params['zona'] = $query['zona'];
+			$where[] = 'e.zona = :zona';
+			$params['zona'] = $query['zona'] === 'norte' ? 'norte_nayarit' : $query['zona'];
 		}
 		if (!empty($query['estado'])) {
-			$where[] = 'estado = :estado';
+			$where[] = 'e.estado = :estado';
 			$params['estado'] = $query['estado'];
 		}
 
 		$sqlWhere = implode(' AND ', $where);
 		return $this->paginate(
-			'SELECT * FROM empresa WHERE ' . $sqlWhere . ' ORDER BY cve_empresa DESC',
-			'SELECT COUNT(*) FROM empresa WHERE ' . $sqlWhere,
+			$this->selectSql() . ' WHERE ' . $sqlWhere . ' ORDER BY e.cve_empresa DESC',
+			'SELECT COUNT(*) FROM empresa e WHERE ' . $sqlWhere,
 			$params,
 			(int) ($query['page'] ?? 1),
 			(int) ($query['limit'] ?? 10)
@@ -35,7 +35,7 @@ class Empresa extends BaseModel
 
 	public function find(string|int $cveEmpresa): ?array
 	{
-		return $this->fetchOne('SELECT * FROM empresa WHERE cve_empresa = :cve_empresa', ['cve_empresa' => $cveEmpresa]);
+		return $this->fetchOne($this->selectSql() . ' WHERE e.cve_empresa = :cve_empresa', ['cve_empresa' => $cveEmpresa]);
 	}
 
 	public function findByPersonaExterna(string|int $cvePersona): ?array
@@ -92,5 +92,38 @@ class Empresa extends BaseModel
 			ORDER BY p.porcentaje_coincidencia DESC, p.fecha_postulacion DESC',
 			['cve_empresa' => $cveEmpresa]
 		);
+	}
+
+	private function selectSql(): string
+	{
+		return 'SELECT
+				e.*,
+				c.cve_convenio,
+				c.fecha_inicio AS fecha_convenio,
+				c.fecha_fin AS fecha_fin_convenio,
+				c.estado AS convenio_estado,
+				CASE
+					WHEN c.cve_convenio IS NULL THEN \'pendiente\'
+					WHEN c.estado = \'por_vencer\' THEN \'por_vencer\'
+					WHEN c.estado = \'vencido\' THEN \'inactivo\'
+					WHEN c.estado = \'activo\' AND c.fecha_fin < current_date THEN \'inactivo\'
+					WHEN c.estado = \'activo\' AND c.fecha_fin <= current_date + interval \'60 days\' THEN \'por_vencer\'
+					WHEN c.estado = \'activo\' THEN \'activo\'
+					WHEN c.estado = \'pendiente\' THEN \'pendiente\'
+					ELSE \'inactivo\'
+				END AS estatus_convenio,
+				CASE
+					WHEN c.cve_convenio IS NULL THEN \'ninguno\'
+					WHEN e.zona = \'norte_nayarit\' THEN \'automatico\'
+					ELSE \'solicitud\'
+				END AS tipo_convenio
+			FROM empresa e
+			LEFT JOIN LATERAL (
+				SELECT *
+				FROM convenio cn
+				WHERE cn.cve_empresa = e.cve_empresa
+				ORDER BY cn.fecha_fin DESC, cn.cve_convenio DESC
+				LIMIT 1
+			) c ON true';
 	}
 }
