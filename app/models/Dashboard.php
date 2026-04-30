@@ -41,25 +41,39 @@ class Dashboard extends BaseModel
 				WHERE v.cve_empresa = :cve_empresa',
 				['cve_empresa' => $cveEmpresa]
 			),
-			'candidatos' => $this->fetchAll(
-				'SELECT
-					p.cve_postulacion,
-					e.cve_egresado,
-					e.nombre,
-					e.primer_apellido,
-					e.segundo_apellido,
-					v.cve_vacante,
-					v.titulo AS vacante,
-					emp.razon_social AS empresa,
-					p.porcentaje_coincidencia,
-					p.estado,
-					p.fecha_postulacion
-				FROM postulacion p
-				JOIN egresado e ON e.cve_egresado = p.cve_egresado
-				JOIN vacante v ON v.cve_vacante = p.cve_vacante
-				JOIN empresa emp ON emp.cve_empresa = v.cve_empresa
-				WHERE v.cve_empresa = :cve_empresa
-				  AND p.porcentaje_coincidencia >= 80
+				'candidatos' => $this->fetchAll(
+					'SELECT
+						p.cve_postulacion,
+						e.cve_egresado,
+						perfil.nombre,
+						perfil.primer_apellido,
+						perfil.segundo_apellido,
+						perfil.carrera,
+						perfil.matricula,
+						perfil.correo_institucional,
+						perfil.correo_personal,
+						perfil.telefono,
+						perfil.url_cv,
+						perfil.url_foto,
+						perfil.anio_egreso,
+						v.cve_vacante,
+						v.titulo AS vacante,
+						emp.razon_social AS empresa,
+						p.porcentaje_coincidencia,
+						p.estado,
+						p.fecha_postulacion,
+						punt.puntaje_psicometrica,
+						punt.puntaje_cognitiva,
+						punt.puntaje_tecnica,
+						punt.puntaje_proyectiva
+					FROM postulacion p
+					JOIN egresado e ON e.cve_egresado = p.cve_egresado
+					JOIN vacante v ON v.cve_vacante = p.cve_vacante
+					JOIN empresa emp ON emp.cve_empresa = v.cve_empresa
+					LEFT JOIN vw_perfil_completo_egresado perfil ON perfil.cve_egresado = e.cve_egresado
+					LEFT JOIN vw_puntaje_egresado punt ON punt.cve_egresado = e.cve_egresado
+					WHERE v.cve_empresa = :cve_empresa
+					  AND p.porcentaje_coincidencia >= 80
 				ORDER BY p.porcentaje_coincidencia DESC, p.fecha_postulacion DESC',
 				['cve_empresa' => $cveEmpresa]
 			),

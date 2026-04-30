@@ -23,6 +23,7 @@ Flight::route('GET /api/health', function (): void {
 });
 
 Flight::route('POST /api/auth/login', [AuthController::class, 'login']);
+Flight::route('POST /api/siest/login', [AuthController::class, 'login']);
 Flight::route('GET /api/auth/me', [AuthController::class, 'me']);
 
 Flight::route('GET /api/egresados', [EgresadoController::class, 'index']);
@@ -45,6 +46,7 @@ Flight::route('PUT /api/empresas/@cve_empresa', [EmpresaController::class, 'upda
 Flight::route('POST /api/empresas/@cve_empresa/foto', [EmpresaController::class, 'subirFoto']);
 Flight::route('GET /api/empresas/@cve_empresa/vacantes', [EmpresaController::class, 'vacantes']);
 Flight::route('GET /api/empresas/@cve_empresa/candidatos', [EmpresaController::class, 'candidatos']);
+Flight::route('POST /api/empresas/@cve_empresa/evaluaciones-desempeno', [EmpresaController::class, 'evaluarDesempeno']);
 
 Flight::route('POST /api/solicitudes-convenio', [SolicitudConvenioController::class, 'store']);
 Flight::route('GET /api/solicitudes-convenio', [SolicitudConvenioController::class, 'index']);

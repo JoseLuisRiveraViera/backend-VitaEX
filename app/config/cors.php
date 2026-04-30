@@ -7,11 +7,19 @@ class Cors
 {
 	public static function apply(): void
 	{
-		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-		$defaultOrigin = Env::get('FRONTEND_URL', 'http://localhost:4200') ?? 'http://localhost:4200';
-		$allowedOrigins = array_filter(array_map('trim', explode(',', Env::get('CORS_ALLOWED_ORIGINS', $defaultOrigin) ?? '')));
+			$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+			$defaultOrigin = Env::get('FRONTEND_URL', 'http://localhost:4200') ?? 'http://localhost:4200';
+			$allowedOrigins = array_filter(array_map('trim', explode(',', Env::get('CORS_ALLOWED_ORIGINS', $defaultOrigin) ?? '')));
+			if ((Env::get('APP_ENV', 'production') ?? 'production') === 'local') {
+				$allowedOrigins = array_values(array_unique(array_merge($allowedOrigins, [
+					'http://localhost:4200',
+					'http://localhost:4201',
+					'http://127.0.0.1:4200',
+					'http://127.0.0.1:4201',
+				])));
+			}
 
-		if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
+			if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
 			header('Access-Control-Allow-Origin: ' . $origin);
 		} elseif ($allowedOrigins !== []) {
 			header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);

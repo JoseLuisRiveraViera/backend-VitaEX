@@ -7,6 +7,7 @@ use app\core\AuthMiddleware;
 use app\core\Request;
 use app\core\Response;
 use app\core\Validator;
+use app\models\Contratacion;
 use app\models\Empresa;
 use app\services\GoogleDriveService;
 use Throwable;
@@ -134,6 +135,35 @@ class EmpresaController
 			Response::success((new Empresa())->candidatos($cve_empresa), 'Candidatos encontrados');
 		} catch (Throwable $exception) {
 			Response::error('No se pudieron consultar los candidatos', ['detail' => $exception->getMessage()], 500);
+		}
+	}
+
+	public function evaluarDesempeno(string $cve_empresa): void
+	{
+		try {
+			$body = Request::body();
+			$errors = Validator::required($body, ['cve_postulacion', 'calificacion', 'comentario']);
+			if ($errors !== []) {
+				Response::error('Datos inválidos', $errors, 422);
+				return;
+			}
+
+			$calificacion = (int) $body['calificacion'];
+			if ($calificacion < 1 || $calificacion > 10) {
+				Response::error('Datos inválidos', ['calificacion' => 'La calificación debe estar entre 1 y 10.'], 422);
+				return;
+			}
+			if (trim((string) $body['comentario']) === '') {
+				Response::error('Datos inválidos', ['comentario' => 'El comentario es requerido.'], 422);
+				return;
+			}
+
+			$row = (new Contratacion())->evaluarDesempeno($cve_empresa, $body);
+			$row === null
+				? Response::error('La postulación no pertenece a esta empresa', [], 404)
+				: Response::success($row, 'Evaluación de desempeño registrada');
+		} catch (Throwable $exception) {
+			Response::error('No se pudo registrar la evaluación de desempeño', ['detail' => $exception->getMessage()], 422);
 		}
 	}
 }
