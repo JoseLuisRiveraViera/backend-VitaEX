@@ -19,7 +19,7 @@ class Env
 		// Regex to match KEY=VALUE where VALUE can be quoted and multi-line
 		// Matches: KEY = "value" or KEY = 'value' or KEY = value
 		// Modifier 's' allows . to match newlines
-		preg_match_all('/^\s*([A-Z0-9_]+)\s*=\s*(?:(["\'])(.*?)\2|([^#\r\n]*))/ms', $content, $matches, PREG_SET_ORDER);
+		preg_match_all('/^\s*([A-Z0-9_]+)[ \t]*=[ \t]*(?:(["\'])(.*?)\2|([^#\r\n]*))/ms', $content, $matches, PREG_SET_ORDER);
 
 		foreach ($matches as $match) {
 			$key = $match[1];
