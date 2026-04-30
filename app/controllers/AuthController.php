@@ -34,6 +34,19 @@ class AuthController
 
 			$siestPayload = (new SiestAuthService())->login($usuario, (string) $body['contrasena']);
 			$session = $this->buildSession($siestPayload, $usuario);
+
+			// Si el rol es admin, requerir autenticación por código
+			if ($session['rol'] === 'admin') {
+				// En una implementación real, aquí se generaría un código único y se enviaría por correo/SMS.
+				// Por ahora, usaremos el código estático '123456' como se hacía en versiones previas.
+				Response::success([
+					'requires_2fa' => true,
+					'temp_session' => $session, // Enviamos la sesión temporal para que el frontend la guarde
+					'message' => 'Se requiere código de autenticación'
+				], 'Autenticación de dos factores requerida');
+				return;
+			}
+
 			$token = (new JwtService())->create($session);
 
 			Response::success([
@@ -42,6 +55,36 @@ class AuthController
 			], 'Login correcto');
 		} catch (Throwable $exception) {
 			Response::error('No se pudo iniciar sesion', ['detail' => $exception->getMessage()], 401);
+		}
+	}
+
+	public function verify2fa(): void
+	{
+		try {
+			$body = Request::body();
+			$errors = Validator::required($body, ['code', 'session']);
+			if ($errors !== []) {
+				Response::error('Datos invalidos', $errors, 422);
+				return;
+			}
+
+			$code = (string) $body['code'];
+			$session = $body['session'];
+
+			// Validación del código (hardcoded '123456' por ahora)
+			if ($code !== '123456') {
+				Response::error('Código incorrecto', ['code' => 'El código de seguridad no es válido.'], 401);
+				return;
+			}
+
+			$token = (new JwtService())->create($session);
+
+			Response::success([
+				'token' => $token,
+				'user' => $session,
+			], 'Autenticación completada');
+		} catch (Throwable $exception) {
+			Response::error('Error en verificación', ['detail' => $exception->getMessage()], 500);
 		}
 	}
 
