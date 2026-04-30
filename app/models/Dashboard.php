@@ -7,7 +7,24 @@ class Dashboard extends BaseModel
 {
 	public function insercion(): array
 	{
-		return $this->fetchAll('SELECT * FROM vw_insercion_laboral_por_carrera');
+		return $this->fetchAll(
+			'SELECT
+				c.nombre as carrera,
+				c.clave_oficial as abreviatura,
+				COUNT(DISTINCT e.cve_egresado) as total_egresados,
+				COUNT(DISTINCT con.cve_contratacion) as insertados,
+				CASE
+					WHEN COUNT(DISTINCT e.cve_egresado) > 0
+					THEN ROUND((COUNT(DISTINCT con.cve_contratacion)::numeric / COUNT(DISTINCT e.cve_egresado)::numeric) * 100, 2)
+					ELSE 0
+				END as tasa
+			FROM carrera c
+			LEFT JOIN egresado e ON e.cve_carrera = c.cve_carrera
+			LEFT JOIN postulacion p ON p.cve_egresado = e.cve_egresado
+			LEFT JOIN contratacion con ON con.cve_postulacion = p.cve_postulacion
+			GROUP BY c.cve_carrera, c.nombre, c.clave_oficial
+			ORDER BY tasa DESC, carrera ASC'
+		);
 	}
 
 	public function convenios(): array
@@ -27,7 +44,52 @@ class Dashboard extends BaseModel
 
 	public function competencias(): array
 	{
-		return $this->fetchAll('SELECT * FROM vw_ranking_competencia');
+		$demanda = $this->fetchOne(
+			'SELECT
+				ROUND(AVG(puntaje_psicometrica), 2) as psicometrica,
+				ROUND(AVG(puntaje_cognitiva), 2) as cognitiva,
+				ROUND(AVG(puntaje_tecnica), 2) as tecnica,
+				ROUND(AVG(puntaje_proyectiva), 2) as proyectiva
+			FROM perfil_idoneo'
+		) ?: [
+			'psicometrica' => 0,
+			'cognitiva' => 0,
+			'tecnica' => 0,
+			'proyectiva' => 0
+		];
+
+		$promedio = $this->fetchOne(
+			'SELECT
+				ROUND(AVG(puntaje_psicometrica), 2) as psicometrica,
+				ROUND(AVG(puntaje_cognitiva), 2) as cognitiva,
+				ROUND(AVG(puntaje_tecnica), 2) as tecnica,
+				ROUND(AVG(puntaje_proyectiva), 2) as proyectiva
+			FROM vw_puntaje_egresado'
+		) ?: [
+			'psicometrica' => 0,
+			'cognitiva' => 0,
+			'tecnica' => 0,
+			'proyectiva' => 0
+		];
+
+		$config = [
+			'psicometrica' => 'Psicométrica',
+			'cognitiva' => 'Cognitiva',
+			'tecnica' => 'Técnica',
+			'proyectiva' => 'Proyectiva'
+		];
+
+		$result = [];
+		foreach ($config as $key => $label) {
+			$result[] = [
+				'dimension' => $key,
+				'label' => $label,
+				'demanda' => (float) ($demanda[$key] ?? 0),
+				'promedio' => (float) ($promedio[$key] ?? 0)
+			];
+		}
+
+		return $result;
 	}
 
 	public function empresa(string|int $cveEmpresa): array
@@ -41,25 +103,39 @@ class Dashboard extends BaseModel
 				WHERE v.cve_empresa = :cve_empresa',
 				['cve_empresa' => $cveEmpresa]
 			),
-			'candidatos' => $this->fetchAll(
-				'SELECT
-					p.cve_postulacion,
-					e.cve_egresado,
-					e.nombre,
-					e.primer_apellido,
-					e.segundo_apellido,
-					v.cve_vacante,
-					v.titulo AS vacante,
-					emp.razon_social AS empresa,
-					p.porcentaje_coincidencia,
-					p.estado,
-					p.fecha_postulacion
-				FROM postulacion p
-				JOIN egresado e ON e.cve_egresado = p.cve_egresado
-				JOIN vacante v ON v.cve_vacante = p.cve_vacante
-				JOIN empresa emp ON emp.cve_empresa = v.cve_empresa
-				WHERE v.cve_empresa = :cve_empresa
-				  AND p.porcentaje_coincidencia >= 80
+				'candidatos' => $this->fetchAll(
+					'SELECT
+						p.cve_postulacion,
+						e.cve_egresado,
+						perfil.nombre,
+						perfil.primer_apellido,
+						perfil.segundo_apellido,
+						perfil.carrera,
+						perfil.matricula,
+						perfil.correo_institucional,
+						perfil.correo_personal,
+						perfil.telefono,
+						perfil.url_cv,
+						perfil.url_foto,
+						perfil.anio_egreso,
+						v.cve_vacante,
+						v.titulo AS vacante,
+						emp.razon_social AS empresa,
+						p.porcentaje_coincidencia,
+						p.estado,
+						p.fecha_postulacion,
+						punt.puntaje_psicometrica,
+						punt.puntaje_cognitiva,
+						punt.puntaje_tecnica,
+						punt.puntaje_proyectiva
+					FROM postulacion p
+					JOIN egresado e ON e.cve_egresado = p.cve_egresado
+					JOIN vacante v ON v.cve_vacante = p.cve_vacante
+					JOIN empresa emp ON emp.cve_empresa = v.cve_empresa
+					LEFT JOIN vw_perfil_completo_egresado perfil ON perfil.cve_egresado = e.cve_egresado
+					LEFT JOIN vw_puntaje_egresado punt ON punt.cve_egresado = e.cve_egresado
+					WHERE v.cve_empresa = :cve_empresa
+					  AND p.porcentaje_coincidencia >= 80
 				ORDER BY p.porcentaje_coincidencia DESC, p.fecha_postulacion DESC',
 				['cve_empresa' => $cveEmpresa]
 			),

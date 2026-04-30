@@ -217,7 +217,7 @@ FROM vacante
 ON CONFLICT (cve_vacante) DO NOTHING;
 
 INSERT INTO fuente_api (nombre, url_base, descripcion)
-VALUES ('Seed Nacional', 'local://seed', 'Vacantes nacionales mock')
+VALUES ('Seed Nacional', 'seed://vacantes-nacionales', 'Vacantes nacionales iniciales')
 ON CONFLICT (nombre) DO UPDATE SET url_base = EXCLUDED.url_base;
 
 INSERT INTO vacante_api (cve_fuente_api, id_externo, titulo, descripcion, empresa_externa, ubicacion_texto, modalidad, url_original, datos_originales)

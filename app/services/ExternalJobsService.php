@@ -183,4 +183,5 @@ class ExternalJobsService
 			['id_externo' => 'mock-3', 'titulo' => 'Desarrollador PHP', 'empresa_nombre' => 'Cloud Nacional', 'descripcion' => 'APIs con PHP y PostgreSQL.', 'modalidad' => 'remoto', 'url_original' => 'https://example.com/jobs/mock-3'],
 		];
 	}
+
 }

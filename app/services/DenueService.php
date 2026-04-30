@@ -25,6 +25,7 @@ class DenueService
 		// Negocios
 		'administrac'  => ['keyword' => 'administracion', 'scian' => null, 'job_titles' => ['administrador', 'administrativo', 'auxiliar administrativo', 'coordinador administrativo', 'gerente administrativo']],
 		'contadur'     => ['keyword' => 'contabilidad', 'scian' => '541211', 'job_titles' => ['contador', 'contable', 'auxiliar contable', 'auditor', 'impuestos', 'nominas']],
+
 		'contabilidad' => ['keyword' => 'contabilidad', 'scian' => '541211', 'job_titles' => ['contador', 'contable', 'auxiliar contable', 'auditor', 'impuestos', 'nominas']],
 		'finanzas'     => ['keyword' => 'finanzas', 'scian' => '522', 'job_titles' => ['analista financiero', 'finanzas', 'tesorero', 'cuentas por cobrar', 'cuentas por pagar']],
 		'marketing'    => ['keyword' => 'publicidad', 'scian' => '541810', 'job_titles' => ['marketing', 'mercadotecnia', 'community manager', 'publicidad', 'ventas digitales']],
@@ -64,10 +65,7 @@ class DenueService
 	{
 		$token = Env::get('DENUE_TOKEN', '') ?? '';
 		if ($token === '') {
-			if ((Env::get('APP_ENV', 'local') ?? 'local') === 'local') {
-				return $this->mockEmpresas($condicion, $lat, $lon);
-			}
-			throw new RuntimeException('DENUE_TOKEN no está configurado.');
+			throw new RuntimeException('DENUE_TOKEN no esta configurado.');
 		}
 
 		$baseUrl = rtrim(Env::get('DENUE_BASE_URL', 'https://www.inegi.org.mx/app/api/denue/v1/consulta/Buscar') ?? '', '/');
@@ -88,7 +86,7 @@ class DenueService
 
 		$data = json_decode($response, true);
 		if (is_array($data) === false) {
-			throw new RuntimeException('DENUE devolvió una respuesta inválida.');
+			throw new RuntimeException('DENUE devolvio una respuesta invalida.');
 		}
 
 		return $data;
@@ -141,35 +139,5 @@ class DenueService
 	private function formatCoordinate(float $coordinate): string
 	{
 		return number_format($coordinate, 6, '.', '');
-	}
-
-	private function mockEmpresas(string $condicion, float $lat, float $lon): array
-	{
-		return [
-			[
-				'Id' => 'mock-denue-1',
-				'Nombre' => 'Nayarit Software Demo',
-				'Razon_social' => 'Nayarit Software Demo S.A. de C.V.',
-				'Clase_actividad' => 'Servicios de diseño de sistemas de cómputo',
-				'Estrato' => '11 a 30 personas',
-				'Municipio' => 'Santiago Ixcuintla',
-				'Entidad' => 'Nayarit',
-				'Sitio_internet' => 'https://example.com',
-				'Latitud' => (string) $lat,
-				'Longitud' => (string) $lon,
-			],
-			[
-				'Id' => 'mock-denue-2',
-				'Nombre' => 'Costa Tecnología',
-				'Razon_social' => 'Costa Tecnología S.A. de C.V.',
-				'Clase_actividad' => 'Consultoría en computación',
-				'Estrato' => '31 a 50 personas',
-				'Municipio' => 'Tepic',
-				'Entidad' => 'Nayarit',
-				'Sitio_internet' => 'https://example.org',
-				'Latitud' => (string) ($lat + 0.01),
-				'Longitud' => (string) ($lon - 0.01),
-			],
-		];
 	}
 }

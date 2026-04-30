@@ -89,7 +89,7 @@ SIEST_LOGIN_URL=https://www.utdelacosta.edu.mx/SIEstBackend/api/v1/login
 SIEST_EGRESADO_URL=https://www.utdelacosta.edu.mx/SIEstBackend/api/v1/egresados
 ```
 
-También existe `SIEST_AUTH_DRIVER=mock` para usuarios hardcodeados de desarrollo (`admin/admin123`, `egresado/egresado123`, `empresa/empresa123`).
+El modo de autenticacion local con usuarios hardcodeados esta deshabilitado; usa `SIEST_AUTH_DRIVER=database` o `SIEST_AUTH_DRIVER=remote`.
 
 ## Endpoints
 

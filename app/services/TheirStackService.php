@@ -12,10 +12,7 @@ class TheirStackService
 	{
 		$key = Env::get('THEIRSTACK_API_KEY', '') ?? '';
 		if ($key === '') {
-			if ((Env::get('APP_ENV', 'local') ?? 'local') === 'local') {
-				return $this->mockJobs($companyName);
-			}
-			throw new RuntimeException('THEIRSTACK_API_KEY no está configurado.');
+			throw new RuntimeException('THEIRSTACK_API_KEY no esta configurado.');
 		}
 
 		$body = [
@@ -37,13 +34,13 @@ class TheirStackService
 	{
 		$key = Env::get('THEIRSTACK_API_KEY', '') ?? '';
 		if ($key === '') {
-			throw new RuntimeException('THEIRSTACK_API_KEY no está configurado.');
+			throw new RuntimeException('THEIRSTACK_API_KEY no esta configurado.');
 		}
 
 		$url = Env::get('THEIRSTACK_BASE_URL', 'https://api.theirstack.com/v1/jobs/search') ?? 'https://api.theirstack.com/v1/jobs/search';
 		$ch = curl_init($url);
 		if ($ch === false) {
-			throw new RuntimeException('No se pudo iniciar conexión con TheirStack.');
+			throw new RuntimeException('No se pudo iniciar conexion con TheirStack.');
 		}
 
 		curl_setopt_array($ch, [
@@ -62,12 +59,12 @@ class TheirStackService
 		$error = curl_error($ch);
 
 		if ($response === false || $status >= 400) {
-			throw new RuntimeException('TheirStack rechazó la consulta. HTTP ' . $status . ' ' . $error);
+			throw new RuntimeException('TheirStack rechazo la consulta. HTTP ' . $status . ' ' . $error);
 		}
 
 		$data = json_decode((string) $response, true);
 		if (is_array($data) === false) {
-			throw new RuntimeException('TheirStack devolvió una respuesta inválida.');
+			throw new RuntimeException('TheirStack devolvio una respuesta invalida.');
 		}
 
 		$items = $data['data'] ?? $data['results'] ?? $data['jobs'] ?? [];
@@ -88,25 +85,6 @@ class TheirStackService
 			'remoto' => $job['remote'] ?? null,
 			'salario' => $job['salary_string'] ?? null,
 			'descripcion' => $job['description'] ?? $job['description_text'] ?? null,
-		];
-	}
-
-	private function mockJobs(string $companyName): array
-	{
-		return [
-			[
-				'id' => 'mock-theirstack-1',
-				'titulo' => 'Desarrollador PHP Junior',
-				'empresa' => $companyName,
-				'url' => 'https://example.com/jobs/php-junior',
-				'fecha_publicacion' => date('Y-m-d'),
-				'ubicacion' => 'Nayarit, México',
-				'pais' => 'Mexico',
-				'codigo_pais' => 'MX',
-				'remoto' => false,
-				'salario' => null,
-				'descripcion' => 'Vacante mock local TheirStack.',
-			],
 		];
 	}
 }
