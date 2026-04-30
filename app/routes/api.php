@@ -36,7 +36,7 @@ Flight::route('GET /api/empresas/@cve_empresa/candidatos', [EmpresaController::c
 
 Flight::route('POST /api/solicitudes-convenio', [SolicitudConvenioController::class, 'store']);
 Flight::route('GET /api/solicitudes-convenio', [SolicitudConvenioController::class, 'index']);
-Flight::route('PUT /api/solicitudes-convenio/@cve_solicitud', [SolicitudConvenioController::class, 'update']);
+Flight::route('PUT /api/solicitudes-convenio/@cve_solicitud_convenio', [SolicitudConvenioController::class, 'update']);
 
 Flight::route('GET /api/vacantes', [VacanteController::class, 'index']);
 Flight::route('GET /api/vacantes/@cve_vacante', [VacanteController::class, 'show']);

@@ -7,12 +7,12 @@ class Vacante extends BaseModel
 {
 	public function all(): array
 	{
-		return $this->fetchAll('SELECT * FROM vista_vacante_completa');
+		return $this->fetchAll('SELECT * FROM vw_vacante_completa');
 	}
 
 	public function find(string|int $cveVacante): ?array
 	{
-		return $this->fetchOne('SELECT * FROM vista_vacante_completa WHERE cve_vacante = :cve_vacante', ['cve_vacante' => $cveVacante]);
+		return $this->fetchOne('SELECT * FROM vw_vacante_completa WHERE cve_vacante = :cve_vacante', ['cve_vacante' => $cveVacante]);
 	}
 
 	public function create(array $data): array
@@ -45,12 +45,15 @@ class Vacante extends BaseModel
 
 	public function softDelete(string|int $cveVacante): ?array
 	{
-		return $this->fetchOne('UPDATE vacante SET activo = false WHERE cve_vacante = :cve_vacante RETURNING *', ['cve_vacante' => $cveVacante]);
+		return $this->fetchOne('UPDATE vacante SET estado = :estado WHERE cve_vacante = :cve_vacante RETURNING *', [
+			'estado' => 'cancelada',
+			'cve_vacante' => $cveVacante,
+		]);
 	}
 
 	public function candidatos(string|int $cveVacante): array
 	{
-		return $this->fetchAll('SELECT * FROM vista_candidato_idoneo WHERE cve_vacante = :cve_vacante', ['cve_vacante' => $cveVacante]);
+		return $this->fetchAll('SELECT * FROM vw_dashboard_candidato_idoneo WHERE cve_vacante = :cve_vacante', ['cve_vacante' => $cveVacante]);
 	}
 
 	public function crearPerfilIdoneo(string|int $cveVacante, array $data): array

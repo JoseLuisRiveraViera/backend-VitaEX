@@ -91,11 +91,14 @@ Crear empresa:
 
 ```json
 {
-  "nombre": "Tecnologías Costa",
+  "razon_social": "Tecnologías Costa S.A. de C.V.",
+  "nombre_comercial": "Tecnologías Costa",
   "rfc": "TCO240101AB1",
-  "correo": "contacto@tecnologiascosta.mx",
-  "telefono": "3231000000",
-  "direccion": "Santiago Ixcuintla, Nayarit"
+  "sector": "Tecnologías de la información",
+  "sitio_web": "https://tecnologiascosta.mx",
+  "correo_general": "contacto@tecnologiascosta.mx",
+  "telefono_general": "3231000000",
+  "zona": "norte_nayarit"
 }
 ```
 
@@ -106,12 +109,20 @@ Crear vacante con perfil idóneo:
   "cve_empresa": 1,
   "titulo": "Desarrollador Backend PHP",
   "descripcion": "Desarrollo de APIs REST con PHP y PostgreSQL.",
-  "activo": true,
+  "area": "Desarrollo de software",
+  "modalidad": "hibrido",
+  "salario_minimo": 12000,
+  "salario_maximo": 18000,
+  "estado": "publicada",
   "perfil_idoneo": {
     "puntaje_psicometrica": 80,
     "puntaje_cognitiva": 85,
     "puntaje_tecnica": 90,
-    "puntaje_proyectiva": 75
+    "puntaje_proyectiva": 75,
+    "peso_psicometrica": 25,
+    "peso_cognitiva": 25,
+    "peso_tecnica": 25,
+    "peso_proyectiva": 25
   }
 }
 ```
@@ -121,9 +132,10 @@ Actualizar perfil de egresado:
 ```json
 {
   "telefono": "3231000001",
-  "correo": "egresado@utdelacosta.edu.mx",
-  "habilidades": "PHP, PostgreSQL, Angular",
-  "experiencia": "Prácticas profesionales en desarrollo web"
+  "correo_personal": "egresado@gmail.com",
+  "disponible_laboralmente": true,
+  "resumen_profesional": "Desarrollador backend con experiencia en PHP, PostgreSQL y Angular.",
+  "url_cv": "https://example.com/cv.pdf"
 }
 ```
 
@@ -142,8 +154,29 @@ Crear solicitud de convenio:
 {
   "cve_empresa": 1,
   "motivo": "Convenio para estadías e inserción laboral",
-  "estatus": "pendiente"
+  "origen": "plataforma",
+  "estado": "pendiente",
+  "observacion": "Solicitud generada desde el portal de empresas."
 }
 ```
 
-Los payloads de empresa, vacante, perfil y solicitud se filtran contra columnas reales de PostgreSQL para no inventar campos; ajusta los nombres a los definidos en tu schema `bolsa_trabajo`.
+Crear mensaje:
+
+```json
+{
+  "cve_postulacion": 1,
+  "tipo_emisor": "empresa",
+  "mensaje": "Nos interesa iniciar entrevista contigo."
+}
+```
+
+Responder evaluación:
+
+```json
+{
+  "cve_pregunta": 1,
+  "cve_opcion_respuesta": 3
+}
+```
+
+Los payloads se filtran contra columnas reales de PostgreSQL para no inventar campos; ajusta los valores a los catálogos y enums definidos en el schema `bolsa_trabajo`.

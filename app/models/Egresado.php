@@ -17,13 +17,13 @@ class Egresado extends BaseModel
 
 	public function perfil(string|int $cveEgresado): ?array
 	{
-		return $this->fetchOne('SELECT * FROM vista_perfil_egresado WHERE cve_egresado = :cve_egresado', ['cve_egresado' => $cveEgresado]);
+		return $this->fetchOne('SELECT * FROM vw_perfil_completo_egresado WHERE cve_egresado = :cve_egresado', ['cve_egresado' => $cveEgresado]);
 	}
 
 	public function actualizarPerfil(string|int $cveEgresado, array $data): ?array
 	{
-		$payload = $this->filterTableData('perfil_egresado', $data, ['cve_perfil', 'cve_egresado']);
-		return $this->updateById('perfil_egresado', 'cve_egresado', $cveEgresado, $payload);
+		$payload = $this->filterTableData('egresado', $data, ['cve_egresado', 'cve_persona_externa', 'matricula', 'cve_carrera']);
+		return $this->updateById('egresado', 'cve_egresado', $cveEgresado, $payload);
 	}
 
 	public function postulaciones(string|int $cveEgresado): array

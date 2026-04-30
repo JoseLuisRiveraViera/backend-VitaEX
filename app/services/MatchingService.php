@@ -9,11 +9,11 @@ class MatchingService extends BaseModel
 {
 	public function porEgresado(string|int $cveEgresado): array
 	{
-		return $this->fetchAll('SELECT * FROM vista_matching_egresado_vacante WHERE cve_egresado = :cve_egresado', ['cve_egresado' => $cveEgresado]);
+		return $this->fetchAll('SELECT * FROM vw_matching_egresado_vacante WHERE cve_egresado = :cve_egresado', ['cve_egresado' => $cveEgresado]);
 	}
 
 	public function candidatosPorVacante(string|int $cveVacante): array
 	{
-		return $this->fetchAll('SELECT * FROM vista_candidato_idoneo WHERE cve_vacante = :cve_vacante', ['cve_vacante' => $cveVacante]);
+		return $this->fetchAll('SELECT * FROM vw_dashboard_candidato_idoneo WHERE cve_vacante = :cve_vacante', ['cve_vacante' => $cveVacante]);
 	}
 }

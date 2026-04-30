@@ -28,10 +28,10 @@ class SolicitudConvenioController
 		}
 	}
 
-	public function update(string $cve_solicitud): void
+	public function update(string $cve_solicitud_convenio): void
 	{
 		try {
-			$row = (new SolicitudConvenio())->update($cve_solicitud, Request::body());
+			$row = (new SolicitudConvenio())->update($cve_solicitud_convenio, Request::body());
 			$row === null ? Response::error('Solicitud no encontrada', [], 404) : Response::success($row, 'Solicitud de convenio actualizada');
 		} catch (Throwable $exception) {
 			Response::error('No se pudo actualizar la solicitud', ['detail' => $exception->getMessage()], 422);

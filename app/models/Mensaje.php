@@ -7,12 +7,27 @@ class Mensaje extends BaseModel
 {
 	public function porEgresado(string|int $cveEgresado): array
 	{
-		return $this->fetchAll('SELECT * FROM mensaje WHERE cve_egresado = :cve_egresado ORDER BY cve_mensaje DESC', ['cve_egresado' => $cveEgresado]);
+		return $this->fetchAll(
+			'SELECT m.*
+			FROM mensaje m
+			JOIN postulacion p ON p.cve_postulacion = m.cve_postulacion
+			WHERE p.cve_egresado = :cve_egresado
+			ORDER BY m.cve_mensaje DESC',
+			['cve_egresado' => $cveEgresado]
+		);
 	}
 
 	public function porEmpresa(string|int $cveEmpresa): array
 	{
-		return $this->fetchAll('SELECT * FROM mensaje WHERE cve_empresa = :cve_empresa ORDER BY cve_mensaje DESC', ['cve_empresa' => $cveEmpresa]);
+		return $this->fetchAll(
+			'SELECT m.*
+			FROM mensaje m
+			JOIN postulacion p ON p.cve_postulacion = m.cve_postulacion
+			JOIN vacante v ON v.cve_vacante = p.cve_vacante
+			WHERE v.cve_empresa = :cve_empresa
+			ORDER BY m.cve_mensaje DESC',
+			['cve_empresa' => $cveEmpresa]
+		);
 	}
 
 	public function create(array $data): array
