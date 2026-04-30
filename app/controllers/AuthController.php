@@ -110,17 +110,19 @@ class AuthController
 		$cvePersona = $this->firstString($payload, ['cve_persona', 'cve_persona_externa', 'sub', 'id_persona', 'persona_id']);
 
 		$egresado = $this->resolveEgresado($cvePersona, $loginIdentifier, $payload);
-		$empresa = $this->resolveEmpresa($cvePersona, $loginIdentifier, $payload);
-		$admin = $this->resolveAdministrador($cvePersona, $loginIdentifier, $payload);
-		$rol = $this->resolveRole($payload, $roleIds, $egresado, $empresa, $admin);
+			$empresa = $this->resolveEmpresa($cvePersona, $loginIdentifier, $payload);
+			$admin = $this->resolveAdministrador($cvePersona, $loginIdentifier, $payload);
+			$rol = $this->resolveRole($payload, $roleIds, $egresado, $empresa, $admin);
+			$cveRol = $this->roleIdForSession($rol, $payload, $roleIds);
 
-		$session = [
-			'cve_persona' => $cvePersona,
-			'usuario' => $this->firstString($payload, ['usuario', 'nombre_usuario', 'username', 'email', 'correo']) ?: $loginIdentifier,
-			'rol' => $rol,
-			'roles_originales' => $rolesOriginales,
-			'perfil_id' => $payload['perfil_id'] ?? ($payload['cve_rol'] ?? null),
-		];
+			$session = [
+				'cve_persona' => $cvePersona,
+				'usuario' => $this->firstString($payload, ['usuario', 'nombre_usuario', 'username', 'email', 'correo']) ?: $loginIdentifier,
+				'rol' => $rol,
+				'roles_originales' => $rolesOriginales,
+				'perfil_id' => $payload['perfil_id'] ?? $cveRol,
+				'cve_rol' => $cveRol,
+			];
 
 		if ($loginIdentifier !== '') {
 			$session['login_identifier'] = $loginIdentifier;
@@ -283,6 +285,31 @@ class AuthController
 			'EMPRESA', 'COMPANY', 'EMPLEADOR' => '41',
 			'EGRESADO', 'ALUMNO', 'ESTUDIANTE', 'CANDIDATO' => '40',
 			default => null,
+		};
+	}
+
+	private function roleIdForSession(string $rol, array $payload, array $roleIds): string
+	{
+		foreach ([$payload['cve_rol'] ?? null, $payload['perfil_id'] ?? null, ...$roleIds] as $value) {
+			$id = $this->roleIdFromValue($value);
+			if ($id !== null && $this->roleIdMatchesResolvedRole($id, $rol)) {
+				return $id;
+			}
+		}
+
+		return match ($rol) {
+			'empresa' => '41',
+			'admin' => '22',
+			default => '40',
+		};
+	}
+
+	private function roleIdMatchesResolvedRole(string $id, string $rol): bool
+	{
+		return match ($rol) {
+			'empresa' => $id === '41',
+			'admin' => in_array($id, ['1', '22'], true),
+			default => $id === '40',
 		};
 	}
 

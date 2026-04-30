@@ -55,4 +55,62 @@ class Contratacion extends BaseModel
 			['id' => $id]
 		);
 	}
+
+	public function evaluarDesempeno(string|int $cveEmpresa, array $data): ?array
+	{
+		$this->ensureDesempenoColumns();
+
+		$postulacion = $this->fetchOne(
+			'SELECT p.cve_postulacion, p.cve_egresado, p.estado, v.cve_empresa, v.titulo
+			FROM postulacion p
+			JOIN vacante v ON v.cve_vacante = p.cve_vacante
+			WHERE p.cve_postulacion = :cve_postulacion
+			  AND v.cve_empresa = :cve_empresa',
+			[
+				'cve_postulacion' => $data['cve_postulacion'],
+				'cve_empresa' => $cveEmpresa,
+			]
+		);
+		if ($postulacion === null) {
+			return null;
+		}
+
+		$contratacion = $this->fetchOne(
+			'SELECT *
+			FROM contratacion
+			WHERE cve_postulacion = :cve_postulacion
+			ORDER BY cve_contratacion DESC
+			LIMIT 1',
+			['cve_postulacion' => $data['cve_postulacion']]
+		);
+
+		if ($contratacion === null) {
+			$contratacion = $this->create([
+				'cve_postulacion' => $data['cve_postulacion'],
+				'puesto' => $postulacion['titulo'] ?? null,
+				'observacion' => 'Registro creado desde evaluación de desempeño empresarial.',
+			]);
+		}
+
+		return $this->fetchOne(
+			'UPDATE contratacion
+			SET calificacion_desempeno = :calificacion,
+				comentario_desempeno = :comentario,
+				fecha_evaluacion_desempeno = now()
+			WHERE cve_contratacion = :cve_contratacion
+			RETURNING *',
+			[
+				'calificacion' => (int) $data['calificacion'],
+				'comentario' => trim((string) $data['comentario']),
+				'cve_contratacion' => $contratacion['cve_contratacion'],
+			]
+		);
+	}
+
+	private function ensureDesempenoColumns(): void
+	{
+		$this->execute('ALTER TABLE contratacion ADD COLUMN IF NOT EXISTS calificacion_desempeno integer');
+		$this->execute('ALTER TABLE contratacion ADD COLUMN IF NOT EXISTS comentario_desempeno text');
+		$this->execute('ALTER TABLE contratacion ADD COLUMN IF NOT EXISTS fecha_evaluacion_desempeno timestamp with time zone');
+	}
 }
