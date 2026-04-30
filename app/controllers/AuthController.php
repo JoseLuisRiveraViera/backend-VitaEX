@@ -11,6 +11,7 @@ use app\models\AdministradorUt;
 use app\models\Egresado;
 use app\models\Empresa;
 use app\services\JwtService;
+use app\services\MailService;
 use app\services\SiestAuthService;
 use Throwable;
 
@@ -35,26 +36,44 @@ class AuthController
 			$siestPayload = (new SiestAuthService())->login($usuario, (string) $body['contrasena']);
 			$session = $this->buildSession($siestPayload, $usuario);
 
-			// Si el rol es admin, requerir autenticación por código
-			if ($session['rol'] === 'admin') {
-				// En una implementación real, aquí se generaría un código único y se enviaría por correo/SMS.
-				// Por ahora, usaremos el código estático '123456' como se hacía en versiones previas.
-				Response::success([
-					'requires_2fa' => true,
-					'temp_session' => $session, // Enviamos la sesión temporal para que el frontend la guarde
-					'message' => 'Se requiere código de autenticación'
-				], 'Autenticación de dos factores requerida');
+			// Siempre requerir 2FA para todos los roles en esta versión segura
+			$email = $session['correo'] ?? null;
+			if (!$email) {
+				// Si no tiene correo, no podemos enviar el código.
+				// Para evitar bloqueos en desarrollo con seeds incompletos, podrías permitirlo,
+				// pero la instrucción pide 2FA para todos.
+				Response::error('El usuario no tiene un correo configurado para recibir el código de seguridad', [], 400);
 				return;
 			}
 
-			$token = (new JwtService())->create($session);
+			$code = (string) random_int(100000, 999999);
+			$mailed = (new MailService())->sendOtp($email, $code);
+
+			if (!$mailed) {
+				Response::error('No se pudo enviar el correo con el código de seguridad. Verifica la configuración SMTP.', [], 500);
+				return;
+			}
+
+			// Creamos un token temporal (JWT) que contiene la sesión y el hash del código
+			// Expira en 10 minutos (600s)
+			$tempToken = (new JwtService())->create([
+				'session' => $session,
+				'otp_hash' => password_hash($code, PASSWORD_DEFAULT),
+				'purpose' => '2fa_verification'
+			], 600);
 
 			Response::success([
-				'token' => $token,
-				'user' => $session,
-			], 'Login correcto');
+				'requires_2fa' => true,
+				'temp_session' => $tempToken, // Lo pasamos como temp_session para compatibilidad con el frontend
+				'email_masked' => $this->maskEmail($email),
+				'message' => 'Se ha enviado un código de seguridad a ' . $this->maskEmail($email)
+			], 'Autenticación de dos factores requerida');
 		} catch (Throwable $exception) {
-			Response::error('No se pudo iniciar sesion', ['detail' => $exception->getMessage()], 401);
+			$code = ($exception instanceof \RuntimeException) ? 401 : 500;
+			Response::error('Error al intentar iniciar sesión', [
+				'mensaje' => $exception->getMessage(),
+				'tipo' => get_class($exception)
+			], $code);
 		}
 	}
 
@@ -69,14 +88,20 @@ class AuthController
 			}
 
 			$code = (string) $body['code'];
-			$session = $body['session'];
+			$tempToken = (string) $body['session'];
 
-			// Validación del código (hardcoded '123456' por ahora)
-			if ($code !== '123456') {
-				Response::error('Código incorrecto', ['code' => 'El código de seguridad no es válido.'], 401);
+			$payload = (new JwtService())->verify($tempToken);
+			if (!$payload || ($payload['purpose'] ?? '') !== '2fa_verification') {
+				Response::error('La sesión de verificación ha expirado o es inválida. Por favor, intenta loguearte de nuevo.', [], 401);
 				return;
 			}
 
+			if (!password_verify($code, $payload['otp_hash'])) {
+				Response::error('Código incorrecto', ['code' => 'El código de seguridad ingresado no es válido.'], 401);
+				return;
+			}
+
+			$session = $payload['session'];
 			$token = (new JwtService())->create($session);
 
 			Response::success([
@@ -85,6 +110,188 @@ class AuthController
 			], 'Autenticación completada');
 		} catch (Throwable $exception) {
 			Response::error('Error en verificación', ['detail' => $exception->getMessage()], 500);
+		}
+	}
+
+	public function resendCode(): void
+	{
+		try {
+			$body = Request::body();
+			$errors = Validator::required($body, ['session']);
+			if ($errors !== []) {
+				Response::error('Datos invalidos', $errors, 422);
+				return;
+			}
+
+			$tempToken = (string) $body['session'];
+			$payload = (new JwtService())->verify($tempToken);
+
+			if (!$payload || ($payload['purpose'] ?? '') !== '2fa_verification') {
+				Response::error('La sesión ha expirado. Por favor, inicia sesión de nuevo.', [], 401);
+				return;
+			}
+
+			$session = $payload['session'];
+			$email = $session['correo'] ?? null;
+
+			if (!$email) {
+				Response::error('No se pudo encontrar el correo para reenvío', [], 400);
+				return;
+			}
+
+			$code = (string) random_int(100000, 999999);
+			$mailed = (new MailService())->sendOtp($email, $code);
+
+			if (!$mailed) {
+				Response::error('No se pudo enviar el correo.', [], 500);
+				return;
+			}
+
+			$newTempToken = (new JwtService())->create([
+				'session' => $session,
+				'otp_hash' => password_hash($code, PASSWORD_DEFAULT),
+				'purpose' => '2fa_verification'
+			], 600);
+
+			Response::success([
+				'temp_session' => $newTempToken,
+				'message' => 'Se ha reenviado un nuevo código a ' . $this->maskEmail($email)
+			], 'Código reenviado');
+		} catch (Throwable $e) {
+			Response::error('Error al reenviar código', ['detail' => $e->getMessage()], 500);
+		}
+	}
+
+	public function forgotPassword(): void
+	{
+		try {
+			$body = Request::body();
+			$errors = Validator::required($body, ['usuario']);
+			if ($errors !== []) {
+				Response::error('El usuario o correo es requerido', $errors, 422);
+				return;
+			}
+
+			$identifier = trim((string) $body['usuario']);
+			
+			// Buscamos al usuario en las 3 tablas posibles
+			$egresado = (new Egresado())->findByLoginIdentifier($identifier);
+			$empresa = (new Empresa())->findByLoginIdentifier($identifier);
+			$admin = (new AdministradorUt())->findByLoginIdentifier($identifier);
+
+			$userFound = $egresado ?: ($empresa ?: $admin);
+			
+			if (!$userFound) {
+				// Por seguridad, no decimos si el usuario existe o no
+				Response::success(['message' => 'Si el usuario existe y tiene un correo configurado, recibirá un código de recuperación.'], 'Solicitud procesada');
+				return;
+			}
+
+			// Intentamos obtener el correo
+			$email = $userFound['correo_institucional'] ?? ($userFound['correo_personal'] ?? ($userFound['correo_general'] ?? null));
+
+			if (!$email) {
+				Response::success(['message' => 'Si el usuario existe y tiene un correo configurado, recibirá un código de recuperación.'], 'Solicitud procesada');
+				return;
+			}
+
+			$code = (string) random_int(100000, 999999);
+			$mailed = (new MailService())->sendResetCode($email, $code);
+
+			if (!$mailed) {
+				Response::error('Error al enviar el correo de recuperación.', [], 500);
+				return;
+			}
+
+			// Guardamos el estado en un token temporal
+			$tempToken = (new JwtService())->create([
+				'email' => $email,
+				'otp_hash' => password_hash($code, PASSWORD_DEFAULT),
+				'user_type' => $egresado ? 'egresado' : ($empresa ? 'empresa' : 'admin'),
+				'user_id' => $userFound['cve_egresado'] ?? ($userFound['cve_empresa'] ?? $userFound['cve_administrador_ut']),
+				'purpose' => 'password_recovery'
+			], 900); // 15 minutos
+
+			Response::success([
+				'session' => $tempToken,
+				'email_masked' => $this->maskEmail($email),
+				'message' => 'Se ha enviado un código de recuperación a ' . $this->maskEmail($email)
+			], 'Código de recuperación enviado');
+		} catch (Throwable $e) {
+			Response::error('Error en proceso de recuperación', ['detail' => $e->getMessage()], 500);
+		}
+	}
+
+	public function verifyResetCode(): void
+	{
+		try {
+			$body = Request::body();
+			$errors = Validator::required($body, ['code', 'session']);
+			if ($errors !== []) {
+				Response::error('Datos invalidos', $errors, 422);
+				return;
+			}
+
+			$payload = (new JwtService())->verify((string)$body['session']);
+			if (!$payload || ($payload['purpose'] ?? '') !== 'password_recovery') {
+				Response::error('La sesión ha expirado o es inválida.', [], 401);
+				return;
+			}
+
+			if (!password_verify((string)$body['code'], $payload['otp_hash'])) {
+				Response::error('Código incorrecto', [], 401);
+				return;
+			}
+
+			// Generamos un token que autoriza el cambio de contraseña
+			$finalToken = (new JwtService())->create([
+				'user_type' => $payload['user_type'],
+				'user_id' => $payload['user_id'],
+				'purpose' => 'password_reset_authorized'
+			], 300); // 5 minutos para cambiarla
+
+			Response::success([
+				'reset_token' => $finalToken
+			], 'Código verificado correctamente');
+		} catch (Throwable $e) {
+			Response::error('Error al verificar código', ['detail' => $e->getMessage()], 500);
+		}
+	}
+
+	public function resetPassword(): void
+	{
+		try {
+			$body = Request::body();
+			$errors = Validator::required($body, ['password', 'token']);
+			if ($errors !== []) {
+				Response::error('La nueva contraseña y el token son requeridos', $errors, 422);
+				return;
+			}
+
+			$payload = (new JwtService())->verify((string)$body['token']);
+			if (!$payload || ($payload['purpose'] ?? '') !== 'password_reset_authorized') {
+				Response::error('La sesión ha expirado o no está autorizada para cambiar la contraseña.', [], 401);
+				return;
+			}
+
+			$userType = $payload['user_type'];
+			$userId = $payload['user_id'];
+			$newPass = password_hash((string)$body['password'], PASSWORD_DEFAULT);
+
+			// Actualizamos en la tabla correspondiente
+			// Nota: No usamos SIEstAuthService porque el cambio es local a la Bolsa de Trabajo
+			// si el usuario no existe en SIEst o si queremos permitir password local.
+			if ($userType === 'egresado') {
+				(new Egresado())->where('cve_egresado', $userId)->update(['password' => $newPass]);
+			} elseif ($userType === 'empresa') {
+				(new Empresa())->where('cve_empresa', $userId)->update(['password' => $newPass]);
+			} elseif ($userType === 'admin') {
+				(new AdministradorUt())->where('cve_administrador_ut', $userId)->update(['password' => $newPass]);
+			}
+
+			Response::success([], 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.');
+		} catch (Throwable $e) {
+			Response::error('Error al restablecer contraseña', ['detail' => $e->getMessage()], 500);
 		}
 	}
 
@@ -422,5 +629,17 @@ class AuthController
 			$row['primer_apellido'] ?? null,
 			$row['segundo_apellido'] ?? null,
 		], static fn(mixed $value): bool => is_scalar($value) && trim((string) $value) !== '')));
+	}
+
+	private function maskEmail(string $email): string
+	{
+		$parts = explode('@', $email);
+		if (count($parts) !== 2) return $email;
+		$name = $parts[0];
+		$domain = $parts[1];
+		$len = strlen($name);
+		if ($len <= 2) return $name . '@' . $domain;
+		$visible = (int) ceil($len / 2);
+		return substr($name, 0, $visible) . str_repeat('*', $len - $visible) . '@' . $domain;
 	}
 }

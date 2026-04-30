@@ -25,6 +25,10 @@ Flight::route('GET /api/health', function (): void {
 Flight::route('POST /api/auth/login', [AuthController::class, 'login']);
 Flight::route('POST /api/siest/login', [AuthController::class, 'login']);
 Flight::route('POST /api/auth/2fa/verify', [AuthController::class, 'verify2fa']);
+Flight::route('POST /api/auth/resend-code', [AuthController::class, 'resendCode']);
+Flight::route('POST /api/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Flight::route('POST /api/auth/verify-reset-code', [AuthController::class, 'verifyResetCode']);
+Flight::route('POST /api/auth/reset-password', [AuthController::class, 'resetPassword']);
 Flight::route('GET /api/auth/me', [AuthController::class, 'me']);
 
 Flight::route('GET /api/egresados', [EgresadoController::class, 'index']);
