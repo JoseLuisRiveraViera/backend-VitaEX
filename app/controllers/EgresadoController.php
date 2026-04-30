@@ -5,6 +5,7 @@ namespace app\controllers;
 
 use app\core\Request;
 use app\core\Response;
+use app\core\Validator;
 use app\models\Egresado;
 use app\services\MatchingService;
 use Throwable;
@@ -43,7 +44,14 @@ class EgresadoController
 	public function actualizarPerfil(string $cve_egresado): void
 	{
 		try {
-			$row = (new Egresado())->actualizarPerfil($cve_egresado, Request::body());
+			$body = Request::body();
+			$errors = Validator::notBlankWhenPresent($body, ['url_foto']);
+			if ($errors !== []) {
+				Response::error('Datos inválidos', $errors, 422);
+				return;
+			}
+
+			$row = (new Egresado())->actualizarPerfil($cve_egresado, $body);
 			$row === null ? Response::error('Perfil no encontrado', [], 404) : Response::success($row, 'Perfil actualizado');
 		} catch (Throwable $exception) {
 			Response::error('No se pudo actualizar el perfil', ['detail' => $exception->getMessage()], 422);

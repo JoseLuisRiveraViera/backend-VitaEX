@@ -22,4 +22,22 @@ class Validator
 
 		return $errors;
 	}
+
+	/**
+	 * @param array<string, mixed> $data
+	 * @param list<string> $fields
+	 * @return array<string, string>
+	 */
+	public static function notBlankWhenPresent(array $data, array $fields): array
+	{
+		$errors = [];
+
+		foreach ($fields as $field) {
+			if (array_key_exists($field, $data) && is_string($data[$field]) && trim($data[$field]) === '') {
+				$errors[$field] = 'El campo ' . $field . ' no puede estar vacío.';
+			}
+		}
+
+		return $errors;
+	}
 }

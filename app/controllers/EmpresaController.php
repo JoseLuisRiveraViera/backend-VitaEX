@@ -5,6 +5,7 @@ namespace app\controllers;
 
 use app\core\Request;
 use app\core\Response;
+use app\core\Validator;
 use app\models\Empresa;
 use Throwable;
 
@@ -32,7 +33,14 @@ class EmpresaController
 	public function store(): void
 	{
 		try {
-			Response::success((new Empresa())->create(Request::body()), 'Empresa creada', 201);
+			$body = Request::body();
+			$errors = Validator::notBlankWhenPresent($body, ['url_foto']);
+			if ($errors !== []) {
+				Response::error('Datos inválidos', $errors, 422);
+				return;
+			}
+
+			Response::success((new Empresa())->create($body), 'Empresa creada', 201);
 		} catch (Throwable $exception) {
 			Response::error('No se pudo crear la empresa', ['detail' => $exception->getMessage()], 422);
 		}
@@ -41,7 +49,14 @@ class EmpresaController
 	public function update(string $cve_empresa): void
 	{
 		try {
-			$row = (new Empresa())->update($cve_empresa, Request::body());
+			$body = Request::body();
+			$errors = Validator::notBlankWhenPresent($body, ['url_foto']);
+			if ($errors !== []) {
+				Response::error('Datos inválidos', $errors, 422);
+				return;
+			}
+
+			$row = (new Empresa())->update($cve_empresa, $body);
 			$row === null ? Response::error('Empresa no encontrada', [], 404) : Response::success($row, 'Empresa actualizada');
 		} catch (Throwable $exception) {
 			Response::error('No se pudo actualizar la empresa', ['detail' => $exception->getMessage()], 422);

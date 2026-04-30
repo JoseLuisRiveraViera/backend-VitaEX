@@ -96,6 +96,7 @@ Crear empresa:
   "rfc": "TCO240101AB1",
   "sector": "Tecnologías de la información",
   "sitio_web": "https://tecnologiascosta.mx",
+  "url_foto": "https://example.com/logos/tecnologias-costa.png",
   "correo_general": "contacto@tecnologiascosta.mx",
   "telefono_general": "3231000000",
   "zona": "norte_nayarit"
@@ -133,6 +134,7 @@ Actualizar perfil de egresado:
 {
   "telefono": "3231000001",
   "correo_personal": "egresado@gmail.com",
+  "url_foto": "https://example.com/fotos/egresado-1.jpg",
   "disponible_laboralmente": true,
   "resumen_profesional": "Desarrollador backend con experiencia en PHP, PostgreSQL y Angular.",
   "url_cv": "https://example.com/cv.pdf"
