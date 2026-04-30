@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use app\controllers\AuthController;
 use app\controllers\CertificadoController;
+use app\controllers\TrayectoriaController;
 use app\controllers\ContratacionController;
 use app\controllers\DashboardController;
 use app\controllers\EgresadoController;
@@ -83,6 +84,11 @@ Flight::route('GET /api/contrataciones/empresa/@cve_empresa', [ContratacionContr
 Flight::route('GET /api/contrataciones/egresado/@cve_egresado', [ContratacionController::class, 'egresado']);
 Flight::route('POST /api/contrataciones', [ContratacionController::class, 'store']);
 Flight::route('PUT /api/contrataciones/@cve_contratacion/confirmar-egresado', [ContratacionController::class, 'confirmarEgresado']);
+
+Flight::route('GET /api/egresados/@cve_egresado/trayectoria', [TrayectoriaController::class, 'egresado']);
+Flight::route('POST /api/egresados/@cve_egresado/trayectoria', [TrayectoriaController::class, 'store']);
+Flight::route('PUT /api/trayectoria/@cve_trayectoria', [TrayectoriaController::class, 'update']);
+Flight::route('DELETE /api/trayectoria/@cve_trayectoria', [TrayectoriaController::class, 'destroy']);
 
 Flight::route('GET /api/egresados/@cve_egresado/certificados', [CertificadoController::class, 'egresado']);
 Flight::route('POST /api/egresados/@cve_egresado/certificados', [CertificadoController::class, 'store']);

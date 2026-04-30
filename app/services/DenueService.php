@@ -9,18 +9,41 @@ use RuntimeException;
 class DenueService
 {
 	private const CAREER_MAP = [
-		'ti' => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
-		'sistemas' => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
-		'software' => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
-		'arquitectura' => ['keyword' => 'arquitectura', 'scian' => '541310', 'job_titles' => ['arquitecto', 'architecture', 'dibujante', 'proyectista', 'revit', 'autocad', 'bim']],
-		'psicologia' => ['keyword' => 'psicologia', 'scian' => '621330', 'job_titles' => ['psicologo', 'psicóloga', 'recursos humanos', 'reclutador', 'talento humano', 'orientador']],
-		'contaduria' => ['keyword' => 'contabilidad', 'scian' => '541211', 'job_titles' => ['contador', 'contable', 'auxiliar contable', 'auditor', 'impuestos', 'nominas']],
+		// TI / Sistemas / Software
+		'tecnolog'     => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
+		'informac'     => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
+		'sistemas'     => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
+		'software'     => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['developer', 'programador', 'desarrollador', 'javascript', 'python', 'php', 'frontend', 'backend', 'full stack', 'software engineer']],
+		'computo'      => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['soporte tecnico', 'tecnico en sistemas', 'helpdesk', 'redes', 'infraestructura']],
+		'redes'        => ['keyword' => 'computo', 'scian' => '541510', 'job_titles' => ['administrador de redes', 'network engineer', 'cisco', 'infraestructura', 'telecomunicaciones']],
+		// Ingeniería
+		'industrial'   => ['keyword' => 'manufactura', 'scian' => '31-33', 'job_titles' => ['ingeniero industrial', 'calidad', 'procesos', 'produccion', 'manufactura', 'mejora continua', 'seguridad industrial']],
+		'mecatron'     => ['keyword' => 'manufactura', 'scian' => '31-33', 'job_titles' => ['mecatronico', 'automatizacion', 'robotica', 'plc', 'mantenimiento industrial']],
+		'mantenimient' => ['keyword' => 'mantenimiento', 'scian' => '811', 'job_titles' => ['tecnico de mantenimiento', 'mantenimiento preventivo', 'electricista industrial', 'mecanico industrial']],
+		'electronica'  => ['keyword' => 'electronica', 'scian' => '334', 'job_titles' => ['tecnico electronico', 'electronico', 'instrumentacion', 'control']],
+		'logistic'     => ['keyword' => 'transporte', 'scian' => '484', 'job_titles' => ['logistica', 'almacen', 'inventario', 'cadena de suministro', 'operador de almacen']],
+		// Negocios
+		'administrac'  => ['keyword' => 'administracion', 'scian' => null, 'job_titles' => ['administrador', 'administrativo', 'auxiliar administrativo', 'coordinador administrativo', 'gerente administrativo']],
+		'contadur'     => ['keyword' => 'contabilidad', 'scian' => '541211', 'job_titles' => ['contador', 'contable', 'auxiliar contable', 'auditor', 'impuestos', 'nominas']],
 		'contabilidad' => ['keyword' => 'contabilidad', 'scian' => '541211', 'job_titles' => ['contador', 'contable', 'auxiliar contable', 'auditor', 'impuestos', 'nominas']],
-		'industrial' => ['keyword' => 'manufactura', 'scian' => '31-33', 'job_titles' => ['ingeniero industrial', 'calidad', 'procesos', 'produccion', 'manufactura', 'mejora continua', 'seguridad industrial']],
-		'administracion' => ['keyword' => 'administracion', 'scian' => null, 'job_titles' => ['administrador', 'administrativo', 'auxiliar administrativo', 'coordinador administrativo', 'gerente administrativo']],
-		'turismo' => ['keyword' => 'hotel', 'scian' => null, 'job_titles' => ['turismo', 'hotel', 'recepcionista', 'reservaciones', 'guest service', 'agente de viajes']],
-		'gastronomia' => ['keyword' => 'restaurante', 'scian' => null, 'job_titles' => ['chef', 'cocinero', 'gastronomia', 'repostero', 'alimentos y bebidas', 'jefe de cocina']],
-		'agricultura' => ['keyword' => 'agricultura', 'scian' => null, 'job_titles' => ['agronomo', 'agricola', 'campo', 'produccion agricola', 'inocuidad', 'riego']],
+		'finanzas'     => ['keyword' => 'finanzas', 'scian' => '522', 'job_titles' => ['analista financiero', 'finanzas', 'tesorero', 'cuentas por cobrar', 'cuentas por pagar']],
+		'marketing'    => ['keyword' => 'publicidad', 'scian' => '541810', 'job_titles' => ['marketing', 'mercadotecnia', 'community manager', 'publicidad', 'ventas digitales']],
+		'ventas'       => ['keyword' => 'ventas', 'scian' => null, 'job_titles' => ['vendedor', 'asesor comercial', 'ejecutivo de ventas', 'representante comercial']],
+		// Salud y Social
+		'psicolog'     => ['keyword' => 'psicologia', 'scian' => '621330', 'job_titles' => ['psicologo', 'recursos humanos', 'reclutador', 'talento humano', 'orientador']],
+		'enfermeria'   => ['keyword' => 'hospital', 'scian' => '621', 'job_titles' => ['enfermera', 'auxiliar de enfermeria', 'tecnico en enfermeria', 'salud']],
+		'nutricion'    => ['keyword' => 'hospital', 'scian' => '621', 'job_titles' => ['nutriologo', 'nutricionista', 'dietetica', 'salud']],
+		// Diseño y Arte
+		'diseño'       => ['keyword' => 'diseño', 'scian' => '541430', 'job_titles' => ['diseñador grafico', 'diseñador industrial', 'ilustrador', 'ui ux', 'creatividad']],
+		'arquitectura' => ['keyword' => 'arquitectura', 'scian' => '541310', 'job_titles' => ['arquitecto', 'dibujante', 'proyectista', 'revit', 'autocad', 'bim']],
+		// Servicios
+		'turismo'      => ['keyword' => 'hotel', 'scian' => null, 'job_titles' => ['recepcionista', 'reservaciones', 'guest service', 'agente de viajes', 'guia turistico']],
+		'gastronom'    => ['keyword' => 'restaurante', 'scian' => null, 'job_titles' => ['chef', 'cocinero', 'repostero', 'alimentos y bebidas', 'jefe de cocina']],
+		'alimentos'    => ['keyword' => 'restaurante', 'scian' => null, 'job_titles' => ['chef', 'cocinero', 'nutricion', 'control de calidad alimentos']],
+		// Primario
+		'agricultur'   => ['keyword' => 'agricultura', 'scian' => null, 'job_titles' => ['agronomo', 'campo', 'produccion agricola', 'inocuidad', 'riego']],
+		'agronomo'     => ['keyword' => 'agricultura', 'scian' => null, 'job_titles' => ['agronomo', 'campo', 'produccion agricola', 'inocuidad', 'riego']],
+		'pesca'        => ['keyword' => 'pesca', 'scian' => null, 'job_titles' => ['acuicultura', 'pesca', 'produccion pesquera']],
 	];
 
 	public function buscarPorCarrera(string $carrera, float $lat, float $lon, int $radio = 5000, int $limit = 20): array
