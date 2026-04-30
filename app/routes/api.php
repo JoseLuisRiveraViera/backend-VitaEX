@@ -38,6 +38,9 @@ Flight::route('GET /api/egresados/@cve_egresado/perfil', [EgresadoController::cl
 Flight::route('PUT /api/egresados/@cve_egresado/perfil', [EgresadoController::class, 'actualizarPerfil']);
 Flight::route('POST /api/egresados/@cve_egresado/cv', [EgresadoController::class, 'subirCv']);
 Flight::route('POST /api/egresados/@cve_egresado/foto', [EgresadoController::class, 'subirFoto']);
+Flight::route('GET /api/egresados/@cve_egresado/foto', [EgresadoController::class, 'foto']);
+Flight::route('GET /api/egresados/@cve_egresado/foto-proxy', [EgresadoController::class, 'fotoProxy']);
+Flight::route('DELETE /api/egresados/@cve_egresado/foto', [EgresadoController::class, 'eliminarFoto']);
 Flight::route('GET /api/egresados/@cve_egresado/postulaciones', [EgresadoController::class, 'postulaciones']);
 Flight::route('GET /api/egresados/@cve_egresado/evaluaciones', [EgresadoController::class, 'evaluaciones']);
 Flight::route('DELETE /api/egresados/@cve_egresado/evaluaciones', [EgresadoController::class, 'resetEvaluaciones']);

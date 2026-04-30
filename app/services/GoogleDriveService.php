@@ -6,6 +6,7 @@ namespace app\services;
 use app\config\Env;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 class GoogleDriveService
 {
@@ -39,26 +40,68 @@ class GoogleDriveService
 		$response = $this->multipartUpload($metadata, $validated['tmp_name'], $validated['mime_type']);
 		$fileId = (string) ($response['id'] ?? '');
 		if ($fileId === '') {
-			throw new RuntimeException('Google Drive no devolvio el ID del archivo subido.');
+			throw new RuntimeException('Google Drive no devolvio ID para el archivo subido.');
 		}
 
-		if ($this->makePublic()) {
-			$this->createPublicPermission($fileId);
+		if (Env::get('GOOGLE_DRIVE_MAKE_PUBLIC') === 'true') {
+			$this->makeFilePublic($fileId);
 		}
 
-		$url = (string) ($response['webViewLink'] ?? '');
-		if ($url === '') {
-			$url = 'https://drive.google.com/file/d/' . rawurlencode($fileId) . '/view';
+		// Si es una imagen, usamos el formato de miniatura para que sea compatible con etiquetas <img>
+		// Si es un documento, usamos el enlace de visualización (webViewLink)
+		$isImage = str_contains($validated['mime_type'], 'image/');
+		
+		if ($isImage) {
+			// Usamos el formato de miniatura sin export=download para que el navegador la muestre inline
+			$directLink = "https://drive.google.com/thumbnail?id=$fileId&sz=w800";
+		} else {
+			$directLink = (string) ($response['webViewLink'] ?? "https://drive.google.com/file/d/$fileId/view?usp=drivesdk");
 		}
 
 		return [
 			'id' => $fileId,
-			'name' => (string) ($response['name'] ?? $name),
-			'mime_type' => (string) ($response['mimeType'] ?? $validated['mime_type']),
-			'web_view_link' => $url,
-			'web_content_link' => $response['webContentLink'] ?? null,
-			'url' => $url,
+			'url' => $directLink,
+			'name' => $name,
+			'mime_type' => $validated['mime_type'],
 		];
+	}
+
+	public function deleteFile(string $fileIdOrUrl): bool
+	{
+		$fileId = $this->extractFileId($fileIdOrUrl);
+		if ($fileId === '') {
+			return false;
+		}
+
+		try {
+			// Usamos supportsAllDrives por si es una Unidad Compartida
+			$url = "https://www.googleapis.com/drive/v3/files/" . rawurlencode($fileId) . "?supportsAllDrives=true";
+			
+			// Si falla con 404, requestJson lanzará una excepción que capturaremos aquí
+			$this->requestJson('DELETE', $url, [
+				'Authorization: Bearer ' . $this->accessToken(),
+			], '');
+			
+			return true;
+		} catch (Throwable $e) {
+			// Ignoramos errores 404 (no encontrado) o 403 (sin permiso para borrar)
+			// El objetivo es limpiar, si no se puede, seguimos adelante
+			return true; 
+		}
+	}
+
+	private function extractFileId(string $value): string
+	{
+		$value = trim($value);
+		if (str_contains($value, 'drive.google.com')) {
+			if (preg_match('/\/d\/([a-zA-Z0-9_-]{25,})/', $value, $matches)) {
+				return $matches[1];
+			}
+			if (preg_match('/id=([a-zA-Z0-9_-]{25,})/', $value, $matches)) {
+				return $matches[1];
+			}
+		}
+		return (strlen($value) >= 25 && !str_contains($value, '/')) ? $value : '';
 	}
 
 	/**
@@ -190,7 +233,7 @@ class GoogleDriveService
 		], $body);
 	}
 
-	private function createPublicPermission(string $fileId): void
+	private function makeFilePublic(string $fileId): void
 	{
 		$url = 'https://www.googleapis.com/drive/v3/files/' . rawurlencode($fileId) . '/permissions?supportsAllDrives=true';
 		$this->requestJson('POST', $url, [
@@ -208,77 +251,31 @@ class GoogleDriveService
 			return self::$accessToken;
 		}
 
-		$credentials = $this->credentials();
-		$now = time();
-		$claim = [
-			'iss' => $credentials['client_email'],
-			'scope' => self::DRIVE_SCOPE,
-			'aud' => self::TOKEN_URL,
-			'iat' => $now,
-			'exp' => $now + 3600,
-		];
+		$clientId = Env::get('GOOGLE_DRIVE_CLIENT_ID', '');
+		$clientSecret = Env::get('GOOGLE_DRIVE_CLIENT_SECRET', '');
+		$refreshToken = Env::get('GOOGLE_DRIVE_REFRESH_TOKEN', '');
 
-		$unsignedJwt = $this->base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']))
-			. '.'
-			. $this->base64UrlEncode(json_encode($claim, JSON_UNESCAPED_SLASHES));
-
-		$privateKey = str_replace('\\n', "\n", (string) $credentials['private_key']);
-		$signature = '';
-		if (openssl_sign($unsignedJwt, $signature, $privateKey, OPENSSL_ALGO_SHA256) === false) {
-			throw new RuntimeException('No se pudo firmar el JWT de Google Drive.');
+		if ($clientId === '' || $clientSecret === '' || $refreshToken === '') {
+			throw new RuntimeException('Configura GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET y GOOGLE_DRIVE_REFRESH_TOKEN en el .env');
 		}
 
-		$jwt = $unsignedJwt . '.' . $this->base64UrlEncode($signature);
 		$response = $this->requestJson('POST', self::TOKEN_URL, [
 			'Content-Type: application/x-www-form-urlencoded',
 		], http_build_query([
-			'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			'assertion' => $jwt,
+			'client_id' => $clientId,
+			'client_secret' => $clientSecret,
+			'refresh_token' => $refreshToken,
+			'grant_type' => 'refresh_token',
 		]));
 
 		$token = (string) ($response['access_token'] ?? '');
 		if ($token === '') {
-			throw new RuntimeException('Google no devolvio access_token para Drive.');
+			throw new RuntimeException('Google no devolvio access_token para Drive usando Refresh Token.');
 		}
 
 		self::$accessToken = $token;
 		self::$expiresAt = time() + (int) ($response['expires_in'] ?? 3600);
 		return $token;
-	}
-
-	/**
-	 * @return array<string,mixed>
-	 */
-	private function credentials(): array
-	{
-		$json = Env::get('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON', '');
-		$base64 = Env::get('GOOGLE_DRIVE_SERVICE_ACCOUNT_BASE64', '');
-
-		if (($json === null || trim($json) === '') && $base64 !== null && trim($base64) !== '') {
-			$decoded = base64_decode(trim($base64), true);
-			$json = $decoded === false ? '' : $decoded;
-		}
-
-		if ($json === null || trim($json) === '') {
-			$path = trim(Env::get('GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH', '') ?? '');
-			if ($path === '' || is_readable($path) === false) {
-				throw new RuntimeException('Configura GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH, GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON o GOOGLE_DRIVE_SERVICE_ACCOUNT_BASE64.');
-			}
-			$json = file_get_contents($path);
-		}
-
-		$credentials = json_decode((string) $json, true);
-		if (is_array($credentials) === false) {
-			throw new RuntimeException('Las credenciales de Google Drive no son JSON valido.');
-		}
-
-		foreach (['client_email', 'private_key'] as $key) {
-			if (empty($credentials[$key]) || is_string($credentials[$key]) === false) {
-				throw new RuntimeException('Las credenciales de Google Drive no contienen ' . $key . '.');
-			}
-		}
-
-		return $credentials;
 	}
 
 	/**
@@ -298,6 +295,14 @@ class GoogleDriveService
 
 		$responseBody = file_get_contents($url, false, stream_context_create($options));
 		$status = $this->responseStatus($http_response_header ?? []);
+		if ($responseBody === false && $status >= 400) {
+			throw new RuntimeException('Google Drive respondio con error ' . $status);
+		}
+
+		if ($status === 204 || ($method === 'DELETE' && $status >= 200 && $status < 300)) {
+			return [];
+		}
+
 		if ($responseBody === false || $status < 200 || $status >= 300) {
 			throw new RuntimeException('Google Drive respondio con error ' . $status . ': ' . substr((string) $responseBody, 0, 300));
 		}
@@ -344,5 +349,43 @@ class GoogleDriveService
 	private function makePublic(): bool
 	{
 		return in_array(strtolower(trim(Env::get('GOOGLE_DRIVE_MAKE_PUBLIC', 'false') ?? 'false')), ['1', 'true', 'yes', 'si'], true);
+	}
+
+	public function proxyFile(string $fileIdOrUrl): void
+	{
+		$fileId = $this->extractFileId($fileIdOrUrl);
+		if ($fileId === '') {
+			throw new RuntimeException('ID de archivo invalido para el proxy.');
+		}
+
+		$token = $this->accessToken();
+		$metaUrl = "https://www.googleapis.com/drive/v3/files/" . rawurlencode($fileId) . "?fields=mimeType&supportsAllDrives=true";
+		$metaResponse = $this->requestJson('GET', $metaUrl, [
+			'Authorization: Bearer ' . $token
+		], '');
+
+		$mimeType = $metaResponse['mimeType'] ?? 'application/octet-stream';
+		$url = "https://www.googleapis.com/drive/v3/files/" . rawurlencode($fileId) . "?alt=media&supportsAllDrives=true";
+		$options = [
+			'http' => [
+				'method' => 'GET',
+				'header' => 'Authorization: Bearer ' . $token,
+				'ignore_errors' => true,
+				'timeout' => 30,
+			],
+		];
+
+		$content = file_get_contents($url, false, stream_context_create($options));
+		$status = $this->responseStatus($http_response_header ?? []);
+		if ($content === false || $status < 200 || $status >= 300) {
+			throw new RuntimeException('Google Drive respondio con error ' . $status . ' al descargar el archivo.');
+		}
+
+		header('Content-Type: ' . $mimeType);
+		header('Cache-Control: private, max-age=0, no-cache, no-store, must-revalidate');
+		header('Pragma: no-cache');
+		header('Expires: 0');
+		header('X-Content-Type-Options: nosniff');
+		echo $content;
 	}
 }
