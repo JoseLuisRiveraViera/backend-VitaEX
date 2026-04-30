@@ -37,6 +37,7 @@ Flight::route('GET /api/egresados/me', [EgresadoController::class, 'me']);
 Flight::route('GET /api/egresados/@cve_egresado', [EgresadoController::class, 'show']);
 Flight::route('GET /api/egresados/@cve_egresado/perfil', [EgresadoController::class, 'perfil']);
 Flight::route('PUT /api/egresados/@cve_egresado/perfil', [EgresadoController::class, 'actualizarPerfil']);
+Flight::route('GET /api/egresados/@cve_egresado/cv/pdf', [app\controllers\CvPdfController::class, 'generate']);
 Flight::route('POST /api/egresados/@cve_egresado/cv', [EgresadoController::class, 'subirCv']);
 Flight::route('POST /api/egresados/@cve_egresado/foto', [EgresadoController::class, 'subirFoto']);
 Flight::route('GET /api/egresados/@cve_egresado/foto', [EgresadoController::class, 'foto']);
