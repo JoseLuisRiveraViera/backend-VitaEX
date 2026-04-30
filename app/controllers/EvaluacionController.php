@@ -22,7 +22,20 @@ class EvaluacionController
 	public function preguntas(string $cve_tipo_prueba): void
 	{
 		try {
-			Response::success((new Evaluacion())->preguntas($cve_tipo_prueba), 'Preguntas encontradas');
+			$query = Request::query();
+			$cveCarrera = null;
+
+			// Si se pasa cve_egresado, buscamos su carrera
+			if (isset($query['cve_egresado'])) {
+				$egresado = (new \app\models\Egresado())->find($query['cve_egresado']);
+				$cveCarrera = $egresado ? (int) $egresado['cve_carrera'] : null;
+			} 
+			// Si se pasa directamente la carrera
+			elseif (isset($query['cve_carrera'])) {
+				$cveCarrera = (int) $query['cve_carrera'];
+			}
+
+			Response::success((new Evaluacion())->preguntas($cve_tipo_prueba, $cveCarrera), 'Preguntas encontradas');
 		} catch (Throwable $exception) {
 			Response::error('No se pudieron consultar las preguntas', ['detail' => $exception->getMessage()], 500);
 		}
