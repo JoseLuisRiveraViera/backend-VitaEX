@@ -14,6 +14,8 @@ use Throwable;
 
 class EgresadoController
 {
+	private const TRANSPARENT_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
 	public function index(): void
 	{
 		try {
@@ -91,13 +93,25 @@ class EgresadoController
 	public function subirCv(string $cve_egresado): void
 	{
 		try {
-			$file = Request::file('file', 'cv', 'documento');
-			if ($file === null) {
-				Response::error('Archivo no enviado', ['file' => 'Envia el CV como multipart/form-data.'], 422);
+			$file = $_FILES['file'] ?? null;
+			if (!$file) {
+				Response::error('No se recibio ningun archivo de CV', [], 400);
 				return;
 			}
 
-			$drive = (new GoogleDriveService())->uploadToFolder($file, 'GOOGLE_DRIVE_EGRESADO_CV_FOLDER_ID', [
+			$model = new Egresado();
+			$current = $model->find($cve_egresado);
+			if ($current === null) {
+				Response::error('Perfil no encontrado', [], 404);
+				return;
+			}
+
+			$driveSvc = new GoogleDriveService();
+			if (!empty($current['url_cv'])) {
+				$driveSvc->deleteFile($current['url_cv']);
+			}
+
+			$drive = $driveSvc->uploadToFolder($file, 'GOOGLE_DRIVE_EGRESADO_CV_FOLDER_ID', [
 				'prefix' => 'egresado_' . $cve_egresado . '_cv_',
 				'allowed_mime_types' => [
 					'application/pdf',
@@ -109,7 +123,7 @@ class EgresadoController
 
 			$row = (new Egresado())->actualizarPerfil($cve_egresado, ['url_cv' => $drive['url']]);
 			if ($row === null) {
-				Response::error('Perfil no encontrado', [], 404);
+				Response::error('Perfil no encontrado tras actualizacion', [], 404);
 				return;
 			}
 
@@ -123,13 +137,25 @@ class EgresadoController
 	public function subirFoto(string $cve_egresado): void
 	{
 		try {
-			$file = Request::file('file', 'foto', 'imagen');
-			if ($file === null) {
-				Response::error('Archivo no enviado', ['file' => 'Envia la foto como multipart/form-data.'], 422);
+			$file = $_FILES['file'] ?? null;
+			if (!$file) {
+				Response::error('No se recibio ninguna imagen', [], 400);
 				return;
 			}
 
-			$drive = (new GoogleDriveService())->uploadToFolder($file, 'GOOGLE_DRIVE_EGRESADO_FOTO_FOLDER_ID', [
+			$model = new Egresado();
+			$current = $model->find($cve_egresado);
+			if ($current === null) {
+				Response::error('Perfil no encontrado', [], 404);
+				return;
+			}
+
+			$driveSvc = new GoogleDriveService();
+			if (!empty($current['url_foto'])) {
+				$driveSvc->deleteFile($current['url_foto']);
+			}
+
+			$drive = $driveSvc->uploadToFolder($file, 'GOOGLE_DRIVE_EGRESADO_FOTO_FOLDER_ID', [
 				'prefix' => 'egresado_' . $cve_egresado . '_foto_',
 				'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
 				'allowed_extensions' => ['jpg', 'jpeg', 'png', 'webp'],
@@ -137,15 +163,50 @@ class EgresadoController
 
 			$row = (new Egresado())->actualizarPerfil($cve_egresado, ['url_foto' => $drive['url']]);
 			if ($row === null) {
-				Response::error('Perfil no encontrado', [], 404);
+				Response::error('Perfil no encontrado tras actualizacion', [], 404);
 				return;
 			}
 
 			$row['drive'] = $drive;
 			Response::success($row, 'Foto de perfil subida a Google Drive');
 		} catch (Throwable $exception) {
-			Response::error('No se pudo subir la foto de perfil', ['detail' => $exception->getMessage()], 422);
+			// Devolvemos el mensaje real de la excepción para diagnosticar
+			Response::error('Error al subir: ' . $exception->getMessage(), [], 422);
 		}
+	}
+
+	public function eliminarFoto(string $cve_egresado): void
+	{
+		try {
+			$model = new Egresado();
+			$current = $model->find($cve_egresado);
+			if ($current && !empty($current['url_foto']) && !str_contains($current['url_foto'], '_placeholder')) {
+				(new GoogleDriveService())->deleteFile($current['url_foto']);
+			}
+			$model->actualizarPerfil($cve_egresado, ['url_foto' => 'https://drive.google.com/file/d/1_placeholder/view']);
+			Response::success(['deleted' => true], 'Foto de perfil eliminada');
+		} catch (Throwable $e) { Response::exception($e, 'No se pudo eliminar la foto'); }
+	}
+
+	public function foto(string $cve_egresado): void
+	{
+		try {
+			$model = new Egresado();
+			$egresado = $model->find($cve_egresado);
+			if (!$egresado || empty($egresado['url_foto']) || str_contains($egresado['url_foto'], '_placeholder')) {
+				$this->transparentPhoto();
+				return;
+			}
+
+			(new GoogleDriveService())->proxyFile($egresado['url_foto']);
+		} catch (Throwable $e) {
+			$this->transparentPhoto();
+		}
+	}
+
+	public function fotoProxy(string $cve_egresado): void
+	{
+		$this->foto($cve_egresado);
 	}
 
 	public function postulaciones(string $cve_egresado): void
@@ -192,5 +253,15 @@ class EgresadoController
 		} catch (Throwable $exception) {
 			Response::exception($exception, 'No se pudieron consultar los certificados');
 		}
+	}
+
+	private function transparentPhoto(): void
+	{
+		header('Content-Type: image/png');
+		header('Cache-Control: private, max-age=0, no-cache, no-store, must-revalidate');
+		header('Pragma: no-cache');
+		header('Expires: 0');
+		header('X-Content-Type-Options: nosniff');
+		echo base64_decode(self::TRANSPARENT_PNG);
 	}
 }

@@ -11,7 +11,7 @@ use Throwable;
 
 class CertificadoController
 {
-	public function egresado(string $cve_egresado): void
+	public function porEgresado(string $cve_egresado): void
 	{
 		try { Response::success((new Certificado())->porEgresado($cve_egresado), 'Certificados encontrados'); }
 		catch (Throwable $e) { Response::exception($e, 'No se pudieron consultar certificados'); }
@@ -57,7 +57,14 @@ class CertificadoController
 	public function destroy(string $cve_certificado): void
 	{
 		try {
-			$deleted = (new Certificado())->delete($cve_certificado);
+			$model = new Certificado();
+			$current = $model->find($cve_certificado);
+			
+			if ($current && !empty($current['url_documento'])) {
+				(new GoogleDriveService())->deleteFile($current['url_documento']);
+			}
+
+			$deleted = $model->delete($cve_certificado);
 			$deleted === 0 ? Response::error('Certificado no encontrado', [], 404) : Response::success(['deleted' => true], 'Certificado eliminado');
 		} catch (Throwable $e) { Response::exception($e, 'No se pudo eliminar el certificado'); }
 	}

@@ -11,31 +11,22 @@ class Env
 			return;
 		}
 
-		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-		if ($lines === false) {
+		$content = file_get_contents($path);
+		if ($content === false) {
 			return;
 		}
 
-		foreach ($lines as $line) {
-			$line = trim($line);
+		// Regex to match KEY=VALUE where VALUE can be quoted and multi-line
+		// Matches: KEY = "value" or KEY = 'value' or KEY = value
+		// Modifier 's' allows . to match newlines
+		preg_match_all('/^\s*([A-Z0-9_]+)\s*=\s*(?:(["\'])(.*?)\2|([^#\r\n]*))/ms', $content, $matches, PREG_SET_ORDER);
 
-			if ($line === '' || str_starts_with($line, '#') || str_contains($line, '=') === false) {
-				continue;
-			}
-
-			[$key, $value] = explode('=', $line, 2);
-			$key = trim($key);
-			$value = trim($value);
+		foreach ($matches as $match) {
+			$key = $match[1];
+			$value = $match[3] !== '' ? $match[3] : trim($match[4] ?? '');
 
 			if ($key === '' || getenv($key) !== false) {
 				continue;
-			}
-
-			if (
-				(strlen($value) >= 2)
-				&& (($value[0] === '"' && substr($value, -1) === '"') || ($value[0] === "'" && substr($value, -1) === "'"))
-			) {
-				$value = substr($value, 1, -1);
 			}
 
 			putenv($key . '=' . $value);

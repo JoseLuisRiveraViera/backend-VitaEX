@@ -10,6 +10,11 @@ class Certificado extends BaseModel
 		return $this->fetchAll('SELECT * FROM documento_egresado WHERE cve_egresado = :cve_egresado ORDER BY cve_documento_egresado DESC', ['cve_egresado' => $cveEgresado]);
 	}
 
+	public function find(string|int $id): ?array
+	{
+		return $this->fetchOne('SELECT * FROM documento_egresado WHERE cve_documento_egresado = :id', ['id' => $id]);
+	}
+
 	public function create(string|int $cveEgresado, array $data): array
 	{
 		$data['cve_egresado'] = $cveEgresado;
